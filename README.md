@@ -35,6 +35,12 @@ uvicorn app.main:app --reload
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
+### HTTP File
+The `api.http` file contains ready-to-use HTTP requests that can be executed directly in:
+- **VS Code**: Install the REST Client extension
+- **IntelliJ IDEA / PyCharm**: Built-in support
+- **Other IDEs**: Most modern IDEs support `.http` files
+
 ### Example API Calls
 
 #### Using curl
@@ -91,6 +97,20 @@ http PATCH http://localhost:8000/exercises/1 \
 - **Persistence**: Data persists via Docker volume mount
 - **Seed data**: 6 sample exercises created on first run
 
+### Resetting Database with Seed Script
+
+To reset the database with fresh sample data:
+
+```bash
+# Using uv
+uv run python scripts/seed.py
+
+# Or with standard Python
+python scripts/seed.py
+```
+
+This will clear existing exercises and populate the database with 10 sample workout exercises.
+
 ## Tech Stack
 
 - **Framework**: FastAPI 0.115+
@@ -109,6 +129,10 @@ workout-tracker/
 │   ├── models.py         # Pydantic models
 │   └── repository.py     # Database layer
 ├── data/                 # SQLite database (gitignored)
+├── scripts/
+│   └── seed.py           # Database seeding script
+├── tests/
+│   └── test_api.py       # API tests
 ├── Dockerfile            # Container definition
 ├── docker-compose.yml    # Docker orchestration
 └── pyproject.toml        # Dependencies
@@ -133,3 +157,8 @@ pytest -v  # verbose
 pytest --cov=app tests/  # with coverage
 ```
 
+## AI Assistance
+
+### Tools Used
+- **GitHub Copilot**: Code completion and suggestions for FastAPI routes, Pydantic models, and test cases
+- **AI Chat Assistant**: Architecture guidance and troubleshooting

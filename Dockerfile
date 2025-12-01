@@ -14,12 +14,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Copy dependency files
 COPY pyproject.toml ./
+COPY app/ ./app/
 
 # Install dependencies
 RUN uv pip install --system .
 
-# Copy app code
-COPY app/ ./app/
 
 # Create directory for database
 RUN mkdir -p /app/data

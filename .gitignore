@@ -36,7 +36,4 @@ uv.lock
 # OS
 .DS_Store
 Thumbs.db
-/sessions/session-01.md
-/sessions/session-02.md
-/sessions/session-03.md
-/sessions/session-04.md
+/sessions
