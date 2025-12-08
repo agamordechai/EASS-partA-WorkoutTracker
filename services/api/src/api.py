@@ -1,12 +1,22 @@
+"""FastAPI application for Workout Tracker.
+
+This module defines the REST API endpoints for managing workout exercises.
+"""
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import List
 import logging
 
-from app.config import get_settings
-from app.models import Exercise, ExerciseResponse, ExerciseEditRequest
-from app.repository import get_all_exercises, get_exercise_by_id, create_exercise, edit_exercise, delete_exercise
+from services.api.src.database.config import get_settings
+from services.api.src.database.models import Exercise, ExerciseResponse, ExerciseEditRequest
+from services.api.src.database.repository import (
+    get_all_exercises,
+    get_exercise_by_id,
+    create_exercise,
+    edit_exercise,
+    delete_exercise
+)
 
 # Get application settings
 settings = get_settings()
@@ -57,6 +67,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get('/')
 def read_root() -> dict[str, str]:
     """Get the root endpoint welcome message.
@@ -70,6 +81,7 @@ def read_root() -> dict[str, str]:
         'docs': settings.api.docs_url
     }
 
+
 @app.get('/exercises', response_model=List[ExerciseResponse])
 def read_exercises() -> List[ExerciseResponse]:
     """Get all exercises from the database.
@@ -78,6 +90,7 @@ def read_exercises() -> List[ExerciseResponse]:
         List[ExerciseResponse]: A list of all exercises with their details.
     """
     return get_all_exercises()
+
 
 @app.get('/exercises/{exercise_id}', response_model=ExerciseResponse)
 def read_exercise(exercise_id: int) -> ExerciseResponse:
@@ -97,6 +110,7 @@ def read_exercise(exercise_id: int) -> ExerciseResponse:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return exercise
 
+
 @app.post('/exercises', response_model=ExerciseResponse, status_code=201)
 def add_exercise(exercise: Exercise) -> ExerciseResponse:
     """Create a new exercise in the database.
@@ -115,6 +129,7 @@ def add_exercise(exercise: Exercise) -> ExerciseResponse:
     )
     return new_exercise
 
+
 @app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse)
 def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest) -> ExerciseResponse:
     """Update any attributes of a specific exercise.
@@ -129,16 +144,23 @@ def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest)
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
+    # Check if weight was explicitly provided in the request (even if None/null)
+    # model_dump(exclude_unset=True) only includes fields that were actually set
+    provided_fields = exercise_edit.model_dump(exclude_unset=True)
+    update_weight_flag = 'weight' in provided_fields
+
     exercise = edit_exercise(
         exercise_id,
         name=exercise_edit.name,
         sets=exercise_edit.sets,
         reps=exercise_edit.reps,
-        weight=exercise_edit.weight
+        weight=exercise_edit.weight,
+        update_weight=update_weight_flag
     )
     if not exercise:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return exercise
+
 
 @app.delete('/exercises/{exercise_id}', status_code=204)
 def delete_exercise_endpoint(exercise_id: int) -> None:
@@ -157,3 +179,4 @@ def delete_exercise_endpoint(exercise_id: int) -> None:
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
+

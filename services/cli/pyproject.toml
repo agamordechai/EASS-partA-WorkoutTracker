@@ -1,0 +1,24 @@
+[project]
+name = "workout-tracker-cli"
+version = "0.1.0"
+description = "Workout Tracker CLI Service"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.15.0",
+    "rich>=13.0.0",
+    "httpx>=0.27.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+

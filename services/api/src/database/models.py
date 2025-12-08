@@ -1,5 +1,7 @@
+"""Pydantic models (schemas) for the Workout Tracker API."""
 from pydantic import BaseModel
 from typing import Optional
+
 
 class Exercise(BaseModel):
     """Exercise model for creating new exercises.
@@ -14,6 +16,7 @@ class Exercise(BaseModel):
     sets: int
     reps: int
     weight: Optional[float] = None
+
 
 class ExerciseResponse(BaseModel):
     """Exercise response model for returning exercise data.
@@ -31,6 +34,7 @@ class ExerciseResponse(BaseModel):
     reps: int
     weight: Optional[float] = None
 
+
 class ExerciseEditRequest(BaseModel):
     """Exercise edit request model for updating exercises.
 
@@ -46,3 +50,4 @@ class ExerciseEditRequest(BaseModel):
     sets: Optional[int] = None
     reps: Optional[int] = None
     weight: Optional[float] = None
+

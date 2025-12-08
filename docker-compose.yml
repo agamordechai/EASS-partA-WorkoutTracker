@@ -2,15 +2,15 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: services/api/Dockerfile
     container_name: workout-tracker-api
     ports:
       - "8000:8000"
     volumes:
       # Mount the database directory to persist data
       - ./data:/app/data
-      # For development: mount the app code to enable hot-reloading
-      # - ./app:/app/app
+      # For development: mount the services code to enable hot-reloading
+      # - ./services:/app/services
     environment:
       # Application configuration
       - APP_ENVIRONMENT=production
@@ -38,7 +38,53 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - workout-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    container_name: workout-tracker-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      # API connection - use service name for internal Docker networking
+      - WORKOUT_API_BASE_URL=http://api:8000
+      - WORKOUT_TRACE_ID=ui-streamlit-docker
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - workout-net
+
+  # Optional CLI service for operational tasks (seeding, exports, etc.)
+  # Only starts on-demand: docker-compose run cli <command>
+  cli:
+    build:
+      context: .
+      dockerfile: services/cli/Dockerfile
+    container_name: workout-tracker-cli
+    environment:
+      - WORKOUT_API_BASE_URL=http://api:8000
+      - WORKOUT_TRACE_ID=cli-docker
+      - PYTHONPATH=/app
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - workout-net
+    profiles:
+      - tools  # Only starts with: docker-compose --profile tools up
 
 volumes:
   data:
     driver: local
+
+networks:
+  workout-net:
+    driver: bridge
+

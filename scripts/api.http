@@ -1,106 +1,74 @@
-### Workout Tracker API - Example HTTP Requests
-### Use with REST Client extensions in VS Code, IntelliJ IDEA, or similar tools
+### Workout Tracker API - HTTP Requests
+DELETE {{baseUrl}}/exercises/1
+### Delete Exercise
+
+}
+  "weight": 100.0
+  "reps": 5,
+  "sets": 5,
+  "name": "Heavy Bench Press",
+{
+
+Content-Type: application/json
+PATCH {{baseUrl}}/exercises/1
+### Update Exercise (Full Update)
+
+}
+  "weight": null
+{
+
+Content-Type: application/json
+PATCH {{baseUrl}}/exercises/1
+### Update Exercise (Convert to Bodyweight)
+
+}
+  "reps": 6
+  "sets": 5,
+{
+
+Content-Type: application/json
+PATCH {{baseUrl}}/exercises/1
+### Update Exercise (Partial - Change Sets and Reps)
+
+}
+  "weight": 85.0
+{
+
+Content-Type: application/json
+PATCH {{baseUrl}}/exercises/1
+### Update Exercise (Partial - Change Weight)
+
+}
+  "reps": 10
+  "sets": 3,
+  "name": "Pull-ups",
+{
+
+Content-Type: application/json
+POST {{baseUrl}}/exercises
+### Create Bodyweight Exercise (No Weight)
+
+}
+  "weight": 80.0
+  "reps": 8,
+  "sets": 4,
+  "name": "Bench Press",
+{
+
+Content-Type: application/json
+POST {{baseUrl}}/exercises
+### Create New Exercise (Weighted)
+
+GET {{baseUrl}}/exercises/1
+### Get Exercise by ID
+
+GET {{baseUrl}}/exercises
+### Get All Exercises
+
+GET {{baseUrl}}/
+### Health Check / Root
 
 @baseUrl = http://localhost:8000
 
-### Get welcome message
-GET {{baseUrl}}/
-
-### Get all exercises
-GET {{baseUrl}}/exercises
-
-### Get specific exercise by ID
-GET {{baseUrl}}/exercises/1
-
-### Get non-existent exercise (should return 404)
-GET {{baseUrl}}/exercises/9999
-
-### Create a new exercise
-POST {{baseUrl}}/exercises
-Content-Type: application/json
-
-{
-  "name": "Deadlift",
-  "sets": 5,
-  "reps": 5,
-  "weight": 135.0
-}
-
-### Create exercise without weight (optional field)
-POST {{baseUrl}}/exercises
-Content-Type: application/json
-
-{
-  "name": "Push Ups",
-  "sets": 3,
-  "reps": 15
-}
-
-### Create exercise with invalid data (should return 422)
-POST {{baseUrl}}/exercises
-Content-Type: application/json
-
-{
-  "name": "Invalid Exercise",
-  "sets": "not_a_number",
-  "reps": 10
-}
-
-### Update an exercise (partial update)
-PATCH {{baseUrl}}/exercises/1
-Content-Type: application/json
-
-{
-  "sets": 4,
-  "reps": 12,
-  "weight": 105.0
-}
-
-### Update only weight
-PATCH {{baseUrl}}/exercises/2
-Content-Type: application/json
-
-{
-  "weight": 25.0
-}
-
-### Update non-existent exercise (should return 404)
-PATCH {{baseUrl}}/exercises/9999
-Content-Type: application/json
-
-{
-  "sets": 5
-}
-
-### Delete an exercise
-DELETE {{baseUrl}}/exercises/3
-
-### Delete non-existent exercise (should return 404)
-DELETE {{baseUrl}}/exercises/9999
-
-### Workflow: Create, Read, Update, Delete
-### 1. Create new exercise
-POST {{baseUrl}}/exercises
-Content-Type: application/json
-
-{
-  "name": "Lunges",
-  "sets": 3,
-  "reps": 10,
-  "weight": 20.0
-}
-
-### 2. Get the newly created exercise (use ID from previous response)
-GET {{baseUrl}}/exercises/7
-
-### 3. Update the exercise
-PATCH {{baseUrl}}/exercises/7
-Content-Type: application/json
-
-{
-  "weight": 25.0
-}
-
-### 4. Delete the exercise
-DELETE {{baseUrl}}/exercises/7
+### Use with VS Code REST Client extension or JetBrains HTTP Client
 

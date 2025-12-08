@@ -1,59 +1,63 @@
-"""
-Seed script to populate the workout tracker database with sample exercises.
+#!/usr/bin/env python
+"""Seed script for populating the database with sample exercises.
 
-This script can be run independently to reset the database with fresh sample data.
+This script provides a simple way to populate the database with sample
+workout exercises for testing and development.
 """
 
 import sys
-import os
+from pathlib import Path
 
-# Add parent directory to path to import app modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from app.repository import get_db_connection, init_db
+from services.api.src.database.repository import create_exercise, get_all_exercises
 
 
-def seed_database() -> None:
-    """Seed the database with sample workout exercises.
+def seed_exercises(count: int = 10) -> None:
+    """Seed the database with sample exercises.
 
-    Initializes the database, clears any existing data, and populates it with
-    a predefined set of sample exercises including various workout types.
-
-    Returns:
-        None
+    Args:
+        count: Number of exercises to create (max 10)
     """
-    print("Initializing database...")
-    init_db()
-
-    print("Clearing existing data...")
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM exercises')
-
-    print("Seeding sample exercises...")
-    seed_data = [
-        ('Bench Press', 3, 10, 95.0),
-        ('Shoulder Press', 3, 10, 22.5),
-        ('Tricep Curl', 3, 10, 42.5),
-        ('Pull Ups', 3, 8, 90.0),
-        ('Squats', 3, 8, 60.0),
-        ('Hip Thrust', 3, 8, 45.0),
-        ('Deadlift', 5, 5, 135.0),
-        ('Barbell Row', 4, 8, 85.0),
-        ('Leg Press', 3, 12, 180.0),
-        ('Lat Pulldown', 3, 10, 70.0),
+    sample_exercises = [
+        {"name": "Bench Press", "sets": 4, "reps": 8, "weight": 80.0},
+        {"name": "Squat", "sets": 4, "reps": 10, "weight": 100.0},
+        {"name": "Deadlift", "sets": 3, "reps": 5, "weight": 120.0},
+        {"name": "Pull-ups", "sets": 3, "reps": 12, "weight": None},
+        {"name": "Overhead Press", "sets": 3, "reps": 10, "weight": 50.0},
+        {"name": "Barbell Row", "sets": 4, "reps": 10, "weight": 70.0},
+        {"name": "Dips", "sets": 3, "reps": 15, "weight": None},
+        {"name": "Lunges", "sets": 3, "reps": 12, "weight": 30.0},
+        {"name": "Push-ups", "sets": 3, "reps": 20, "weight": None},
+        {"name": "Bicep Curls", "sets": 3, "reps": 12, "weight": 15.0},
     ]
 
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.executemany(
-            'INSERT INTO exercises (name, sets, reps, weight) VALUES (?, ?, ?, ?)',
-            seed_data
-        )
+    exercises_to_create = min(count, len(sample_exercises))
 
-    print(f"✓ Successfully seeded {len(seed_data)} exercises")
+    print(f"Creating {exercises_to_create} sample exercises...")
+
+    for i in range(exercises_to_create):
+        exercise_data = sample_exercises[i]
+        exercise = create_exercise(**exercise_data)
+        weight_str = f"{exercise['weight']} kg" if exercise.get('weight') else "Bodyweight"
+        print(f"  ✓ Created: {exercise['name']} ({exercise['sets']}x{exercise['reps']}, {weight_str})")
+
+    print(f"\nDone! Total exercises in database: {len(get_all_exercises())}")
 
 
-if __name__ == '__main__':
-    seed_database()
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Seed the database with sample exercises")
+    parser.add_argument(
+        "--count", "-c",
+        type=int,
+        default=10,
+        help="Number of exercises to create (default: 10, max: 10)"
+    )
+
+    args = parser.parse_args()
+    seed_exercises(args.count)
 

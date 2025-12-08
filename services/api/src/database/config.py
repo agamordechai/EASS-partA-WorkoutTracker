@@ -1,3 +1,4 @@
+"""Configuration settings for the Workout Tracker API."""
 from pathlib import Path
 from typing import Optional, Literal
 from pydantic import Field, field_validator
@@ -39,8 +40,8 @@ class DatabaseSettings(BaseSettings):
     def ensure_absolute_path(cls, v: Path) -> Path:
         """Convert relative paths to absolute paths."""
         if not v.is_absolute():
-            # Resolve relative to project root (one level up from app/)
-            project_root = Path(__file__).parent.parent
+            # Resolve relative to project root (services/api/src/database -> project root)
+            project_root = Path(__file__).parent.parent.parent.parent.parent
             v = (project_root / v).resolve()
         return v
 
@@ -112,7 +113,8 @@ class APISettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix='API_',
-        case_sensitive=False
+        case_sensitive=False,
+        extra='ignore'
     )
 
 
@@ -220,13 +222,9 @@ def reload_settings() -> AppSettings:
     without restarting the application.
 
     Returns:
-        AppSettings: The freshly loaded application settings instance
+        AppSettings: The newly loaded settings instance
     """
     global _settings
     _settings = None
     return get_settings()
-
-
-# Export convenience accessor
-settings = get_settings()
 
