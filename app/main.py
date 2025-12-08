@@ -11,16 +11,35 @@ app = FastAPI(
 
 @app.get('/')
 def read_root():
+    """Get the root endpoint welcome message.
+
+    Returns:
+        dict: A dictionary containing a welcome message.
+    """
     return {'message': 'Welcome to the Workout Tracker API'}
 
 @app.get('/exercises', response_model=List[ExerciseResponse])
 def read_exercises():
-    """Get all exercises"""
+    """Get all exercises from the database.
+
+    Returns:
+        List[ExerciseResponse]: A list of all exercises with their details.
+    """
     return get_all_exercises()
 
 @app.get('/exercises/{exercise_id}', response_model=ExerciseResponse)
 def read_exercise(exercise_id: int):
-    """Get a specific exercise by ID"""
+    """Get a specific exercise by ID.
+
+    Args:
+        exercise_id (int): The unique identifier of the exercise to retrieve.
+
+    Returns:
+        ExerciseResponse: The exercise details if found.
+
+    Raises:
+        HTTPException: 404 error if the exercise is not found.
+    """
     exercise = get_exercise_by_id(exercise_id)
     if not exercise:
         raise HTTPException(status_code=404, detail='Exercise not found')
@@ -28,7 +47,14 @@ def read_exercise(exercise_id: int):
 
 @app.post('/exercises', response_model=ExerciseResponse, status_code=201)
 def add_exercise(exercise: Exercise):
-    """Create a new exercise"""
+    """Create a new exercise in the database.
+
+    Args:
+        exercise (Exercise): The exercise data including name, sets, reps, and optional weight.
+
+    Returns:
+        ExerciseResponse: The newly created exercise with its assigned ID.
+    """
     new_exercise = create_exercise(
         name=exercise.name,
         sets=exercise.sets,
@@ -39,7 +65,18 @@ def add_exercise(exercise: Exercise):
 
 @app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse)
 def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest):
-    """Update any attributes of a specific exercise"""
+    """Update any attributes of a specific exercise.
+
+    Args:
+        exercise_id (int): The unique identifier of the exercise to update.
+        exercise_edit (ExerciseEditRequest): The exercise fields to update (all fields optional).
+
+    Returns:
+        ExerciseResponse: The updated exercise details.
+
+    Raises:
+        HTTPException: 404 error if the exercise is not found.
+    """
     exercise = edit_exercise(
         exercise_id,
         name=exercise_edit.name,
@@ -53,9 +90,18 @@ def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest)
 
 @app.delete('/exercises/{exercise_id}', status_code=204)
 def delete_exercise_endpoint(exercise_id: int):
-    """Delete a specific exercise"""
+    """Delete a specific exercise from the database.
+
+    Args:
+        exercise_id (int): The unique identifier of the exercise to delete.
+
+    Returns:
+        None: No content on successful deletion.
+
+    Raises:
+        HTTPException: 404 error if the exercise is not found.
+    """
     success = delete_exercise(exercise_id)
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
-

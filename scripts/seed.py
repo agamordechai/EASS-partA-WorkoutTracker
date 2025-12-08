@@ -14,7 +14,14 @@ from app.repository import get_db_connection, init_db
 
 
 def seed_database():
-    """Seed the database with sample workout exercises"""
+    """Seed the database with sample workout exercises.
+
+    Initializes the database, clears any existing data, and populates it with
+    a predefined set of sample exercises including various workout types.
+
+    Returns:
+        None
+    """
     print("Initializing database...")
     init_db()
 

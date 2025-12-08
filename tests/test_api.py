@@ -7,7 +7,14 @@ from app import repository
 
 @pytest.fixture(scope='function')
 def test_db():
-    """Create a test database for each test"""
+    """Create a test database for each test.
+
+    This fixture creates an isolated test database for each test function,
+    ensuring tests don't interfere with each other or the production database.
+
+    Yields:
+        None: The fixture sets up the test database environment and cleans up after.
+    """
     # Use a test-specific database
     test_db_path = 'test_workout_tracker.db'
     original_db_path = repository.DB_PATH
@@ -26,19 +33,34 @@ def test_db():
 
 @pytest.fixture(scope='function')
 def client(test_db):
-    """Create a test client with isolated database"""
+    """Create a test client with isolated database.
+
+    Args:
+        test_db: The test database fixture that provides an isolated database.
+
+    Returns:
+        TestClient: A FastAPI test client configured with the test database.
+    """
     return TestClient(app)
 
 
 def test_read_root(client):
-    """Test the root endpoint"""
+    """Test the root endpoint.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     response = client.get('/')
     assert response.status_code == 200
     assert response.json() == {'message': 'Welcome to the Workout Tracker API'}
 
 
 def test_read_exercises(client):
-    """Test getting all exercises"""
+    """Test getting all exercises.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     response = client.get('/exercises')
     assert response.status_code == 200
     data = response.json()
@@ -51,7 +73,11 @@ def test_read_exercises(client):
 
 
 def test_read_exercise_by_id(client):
-    """Test getting a specific exercise"""
+    """Test getting a specific exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     response = client.get('/exercises/1')
     assert response.status_code == 200
     data = response.json()
@@ -60,14 +86,22 @@ def test_read_exercise_by_id(client):
 
 
 def test_read_exercise_not_found(client):
-    """Test getting a non-existent exercise"""
+    """Test getting a non-existent exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     response = client.get('/exercises/9999')
     assert response.status_code == 404
     assert response.json()['detail'] == 'Exercise not found'
 
 
 def test_create_exercise(client):
-    """Test creating a new exercise"""
+    """Test creating a new exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     new_exercise = {
         'name': 'Deadlift',
         'sets': 5,
@@ -85,7 +119,11 @@ def test_create_exercise(client):
 
 
 def test_create_exercise_validation_error(client):
-    """Test creating an exercise with invalid data"""
+    """Test creating an exercise with invalid data.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     invalid_exercise = {
         'name': 'Invalid',
         'sets': 'not_a_number',
@@ -96,7 +134,11 @@ def test_create_exercise_validation_error(client):
 
 
 def test_edit_exercise(client):
-    """Test updating an exercise"""
+    """Test updating an exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     update_data = {
         'sets': 4,
         'reps': 12
@@ -109,14 +151,22 @@ def test_edit_exercise(client):
 
 
 def test_edit_exercise_not_found(client):
-    """Test updating a non-existent exercise"""
+    """Test updating a non-existent exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     update_data = {'sets': 5}
     response = client.patch('/exercises/9999', json=update_data)
     assert response.status_code == 404
 
 
 def test_delete_exercise(client):
-    """Test deleting an exercise"""
+    """Test deleting an exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     new_exercise = {
         'name': 'Temp Exercise',
         'sets': 3,
@@ -133,7 +183,11 @@ def test_delete_exercise(client):
 
 
 def test_delete_exercise_not_found(client):
-    """Test deleting a non-existent exercise"""
+    """Test deleting a non-existent exercise.
+
+    Args:
+        client (TestClient): The test client fixture.
+    """
     response = client.delete('/exercises/9999')
     assert response.status_code == 404
 
