@@ -18,15 +18,16 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1 \
     PYTHONPATH=/app
 
-# Copy service-specific pyproject.toml
-COPY services/frontend/pyproject.toml ./
+# Install dependencies directly
+RUN uv pip install --system \
+    "streamlit>=1.40.0" \
+    "httpx>=0.27.0" \
+    "pandas>=2.2.0" \
+    "pydantic-settings>=2.0.0"
 
 # Copy frontend source code
 COPY services/__init__.py ./services/
 COPY services/frontend/ ./services/frontend/
-
-# Install dependencies
-RUN uv pip install --system .
 
 # Expose Streamlit port
 EXPOSE 8501

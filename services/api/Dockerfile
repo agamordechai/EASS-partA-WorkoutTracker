@@ -18,15 +18,16 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1 \
     PYTHONPATH=/app
 
-# Copy service-specific pyproject.toml
-COPY services/api/pyproject.toml ./
+# Install dependencies directly
+RUN uv pip install --system \
+    "fastapi>=0.115.0" \
+    "uvicorn[standard]>=0.32.0" \
+    "pydantic>=2.10.0" \
+    "pydantic-settings>=2.0.0"
 
 # Copy API source code
 COPY services/__init__.py ./services/
 COPY services/api/ ./services/api/
-
-# Install dependencies
-RUN uv pip install --system .
 
 # Create directory for database
 RUN mkdir -p /app/data
