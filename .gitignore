@@ -29,6 +29,13 @@ htmlcov/
 workout_tracker.db
 data/
 
+# Environment files (keep .env.example and .env.* templates)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
 # UV
 .uv/
 uv.lock

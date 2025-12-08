@@ -4,7 +4,42 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 
 ## Setup
 
-### With Docker (Recommended)
+### Configuration
+
+The application uses sensible defaults from FastAPI and Pydantic. You only need to configure settings that differ from defaults.
+
+#### Quick Start - Environment Variables
+
+Create a `.env` file from the example:
+
+```bash
+# Optional - copy example and uncomment what you need
+cp .env.example .env
+```
+
+Or set environment variables directly:
+
+```bash
+export DB_PATH=data/workout_tracker.db
+export API_PORT=8000
+export APP_LOG_LEVEL=INFO
+```
+
+**Common Configuration Options:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_PATH` | `data/workout_tracker.db` | Database file path |
+| `API_PORT` | `8000` | API server port |
+| `API_DEBUG` | `false` | Enable debug mode |
+| `APP_LOG_LEVEL` | `INFO` | Logging level |
+| `APP_CORS_ORIGINS` | `*` | Allowed CORS origins |
+
+See [Configuration Documentation](docs/configuration.md) for all available options.
+
+
+### Running the API
+#### With Docker (Recommended)
 
 ```bash
 # Build and start the API
@@ -19,7 +54,7 @@ docker compose down
 
 The API runs at **http://localhost:8000**
 
-### Without Docker (Local Development)
+#### Without Docker (Local Development)
 
 ```bash
 # Install dependencies with uv

@@ -1,13 +1,8 @@
 import sqlite3
 from typing import List, Dict, Optional
 from contextlib import contextmanager
-import os
 
-# Use environment variable for DB path, default to data directory
-DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), '..', 'data', 'workout_tracker.db'))
-
-# Ensure the data directory exists
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+from app.config import get_settings
 
 @contextmanager
 def get_db_connection():
@@ -17,8 +12,17 @@ def get_db_connection():
         sqlite3.Connection: A database connection with row_factory set to sqlite3.Row.
             The connection automatically commits on success or rolls back on exception.
     """
-    conn = sqlite3.connect(DB_PATH)
+    settings = get_settings()
+    conn = sqlite3.connect(
+        str(settings.db.path),
+        timeout=settings.db.timeout
+    )
     conn.row_factory = sqlite3.Row
+
+    # Enable SQL echo if configured (for debugging)
+    if settings.db.echo_sql:
+        conn.set_trace_callback(print)
+
     try:
         yield conn
         conn.commit()

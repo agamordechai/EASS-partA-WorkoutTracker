@@ -12,7 +12,25 @@ services:
       # For development: mount the app code to enable hot-reloading
       # - ./app:/app/app
     environment:
+      # Application configuration
+      - APP_ENVIRONMENT=production
+      - APP_LOG_LEVEL=INFO
+      - APP_CORS_ORIGINS=*
+
+      # Database configuration
+      - DB_PATH=/app/data/workout_tracker.db
+      - DB_TIMEOUT=10.0
+
+      # API configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=2
+
+      # Python configuration
       - PYTHONUNBUFFERED=1
+    # Alternative: use env_file for production
+    # env_file:
+    #   - .env.production
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
