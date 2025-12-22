@@ -1,6 +1,13 @@
 # Workout Tracker API
 
-A FastAPI-based REST API for managing workout exercises with SQLite persistence.
+A FastAPI-based REST API for managing workout exercises with PostgreSQL persistence.
+
+## Prerequisites
+
+- **Docker** and **Docker Compose** (recommended)
+- Or for local development:
+  - Python 3.12+
+  - [uv](https://docs.astral.sh/uv/) package manager
 
 ## Project Structure
 
@@ -11,7 +18,7 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 │   │   ├── pyproject.toml   # API-specific dependencies
 │   │   ├── src/
 │   │   │   ├── api.py       # FastAPI application
-│   │   │   └── database/    # SQLite models, CRUD, schemas
+│   │   │   └── database/    # Database models, config, repository
 │   │   └── tests/           # API tests
 │   │
 │   └── frontend/            # Streamlit dashboard
@@ -22,8 +29,7 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 │       │   └── client.py    # HTTP client for API
 │       └── tests/           # Frontend tests
 │
-├── data/
-│   ├── workout_tracker.db   # SQLite database
+├── data/                    # Local development data
 │   └── exports/             # Exported CSV/JSON files
 │
 ├── scripts/                 # Utility scripts
@@ -39,14 +45,24 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 ### Option 1: Docker Compose (Recommended)
 
 ```bash
-# 1. Start all services
+# 1. Start all services (database, API, frontend)
 docker-compose up -d
 
-# 2. Open dashboard
+# 2. Check all services are running
+docker-compose ps
+
+# 3. Open dashboard
 open http://localhost:8501
+
+# 4. Stop all services
+docker-compose down
+
+# 5. Stop and remove all data (fresh start)
+docker-compose down -v
 ```
 
 **Services:**
+- **PostgreSQL Database**: Internal (port 5432)
 - **API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 - **Streamlit Dashboard**: http://localhost:8501
@@ -54,15 +70,17 @@ open http://localhost:8501
 ### Option 2: Local Development (Without Docker)
 
 ```bash
-# Install dependencies
-uv pip install -e .
+# Install dependencies using uv
+uv sync
 
 # Terminal 1 - Start API
-uvicorn services.api.src.api:app --reload
+uv run uvicorn services.api.src.api:app --reload
 
 # Terminal 2 - Start dashboard
-streamlit run services/frontend/src/dashboard.py
+uv run streamlit run services/frontend/src/dashboard.py
 ```
+
+> **Note:** Local development uses SQLite by default. Set `DATABASE_URL` environment variable to use PostgreSQL.
 
 ## Configuration
 
@@ -137,7 +155,7 @@ docker-compose up -d
 # Access at http://localhost:8501
 
 # Without Docker (API must be running)
-streamlit run services/frontend/src/dashboard.py
+uv run streamlit run services/frontend/src/dashboard.py
 ```
 
 **User Guide:**
@@ -153,32 +171,34 @@ streamlit run services/frontend/src/dashboard.py
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run specific test file
-pytest services/api/tests/test_api.py -v
-pytest services/frontend/tests/test_client.py -v
+uv run pytest services/api/tests/test_api.py -v
+uv run pytest services/frontend/tests/test_client.py -v
 
 # Run with coverage
-pytest --cov=services
+uv run pytest --cov=services
 ```
 
 
 ## Database
 
-- **Type:** SQLite
-- **Location:** `data/workout_tracker.db`
-- **Persistence:** Data persists via Docker volume mount or local file
-- **Seed data:** Use the dashboard to add exercises
+- **Docker:** PostgreSQL 15 (data persists via Docker volume)
+- **Local dev:** SQLite (`data/workout_tracker.db`)
+- **Seed data:** Use the dashboard to add exercises, or run:
+  ```bash
+  uv run python scripts/seed.py
+  ```
 
 ## Tech Stack
 
 - **Framework:** FastAPI 0.115+
 - **Server:** Uvicorn
-- **Database:** SQLite3
+- **Database:** PostgreSQL 15 (Docker) / SQLite3 (local)
 - **Validation:** Pydantic 2.10+
 - **Dashboard:** Streamlit 1.40+
 - **HTTP Client:** httpx
