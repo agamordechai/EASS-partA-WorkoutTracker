@@ -82,24 +82,6 @@ services:
     networks:
       - workout-net
 
-  # Optional CLI service for operational tasks (seeding, exports, etc.)
-  # Only starts on-demand: docker-compose run cli <command>
-  cli:
-    build:
-      context: .
-      dockerfile: services/cli/Dockerfile
-    container_name: workout-tracker-cli
-    environment:
-      - WORKOUT_API_BASE_URL=http://api:8000
-      - WORKOUT_TRACE_ID=cli-docker
-      - PYTHONPATH=/app
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - workout-net
-    profiles:
-      - tools  # Only starts with: docker-compose --profile tools up
 
 volumes:
   postgres_data:

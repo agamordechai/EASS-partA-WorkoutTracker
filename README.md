@@ -14,20 +14,13 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 │   │   │   └── database/    # SQLite models, CRUD, schemas
 │   │   └── tests/           # API tests
 │   │
-│   ├── frontend/            # Streamlit dashboard
-│   │   ├── Dockerfile       # Frontend container definition
-│   │   ├── pyproject.toml   # Frontend-specific dependencies
-│   │   ├── src/
-│   │   │   ├── dashboard.py # Streamlit UI
-│   │   │   └── client.py    # HTTP client for API
-│   │   └── tests/           # Frontend tests
-│   │
-│   └── cli/                 # CLI utilities
-│       ├── Dockerfile       # CLI container definition
-│       ├── pyproject.toml   # CLI-specific dependencies
+│   └── frontend/            # Streamlit dashboard
+│       ├── Dockerfile       # Frontend container definition
+│       ├── pyproject.toml   # Frontend-specific dependencies
 │       ├── src/
-│       │   └── cli.py       # Typer CLI commands
-│       └── tests/           # CLI tests
+│       │   ├── dashboard.py # Streamlit UI
+│       │   └── client.py    # HTTP client for API
+│       └── tests/           # Frontend tests
 │
 ├── data/
 │   ├── workout_tracker.db   # SQLite database
@@ -49,10 +42,7 @@ A FastAPI-based REST API for managing workout exercises with SQLite persistence.
 # 1. Start all services
 docker-compose up -d
 
-# 2. Seed sample data
-docker-compose run --rm cli python -m services.cli.src.cli seed --count 5
-
-# 3. Open dashboard
+# 2. Open dashboard
 open http://localhost:8501
 ```
 
@@ -72,9 +62,6 @@ uvicorn services.api.src.api:app --reload
 
 # Terminal 2 - Start dashboard
 streamlit run services/frontend/src/dashboard.py
-
-# Terminal 3 (optional) - Seed data
-uv run python -m services.cli.src.cli seed --count 5
 ```
 
 ## Configuration
@@ -130,9 +117,7 @@ The `scripts/api.http` file contains ready-to-use HTTP requests for VS Code REST
 
 ## User Interfaces
 
-This project provides two interfaces for interacting with the Workout Tracker API:
-- **Streamlit Dashboard** - Visual web interface for managing exercises
-- **Typer CLI** - Command-line interface for operators and automation
+The Streamlit Dashboard provides a visual web interface for managing exercises.
 
 ### Streamlit Dashboard
 
@@ -163,52 +148,6 @@ streamlit run services/frontend/src/dashboard.py
 5. Fill the form to create new exercises
 6. Delete exercises from the bottom section
 
-### Typer CLI
-
-Command-line interface with rich terminal output.
-
-**Features:**
-- List exercises (table, JSON, CSV formats)
-- Add/remove exercises
-- View statistics and metrics
-- Seed sample data
-- Export to JSON
-
-**CLI Commands:**
-```bash
-# List exercises
-uv run python -m services.cli.src.cli list
-uv run python -m services.cli.src.cli list --format json
-uv run python -m services.cli.src.cli list --format csv
-
-# Add exercise
-uv run python -m services.cli.src.cli add "Deadlift" --sets 5 --reps 5 --weight 120
-
-# Show specific exercise
-uv run python -m services.cli.src.cli show 1
-
-# Delete exercise
-uv run python -m services.cli.src.cli remove 1 --force
-
-# View statistics
-uv run python -m services.cli.src.cli stats
-
-# Seed sample data
-uv run python -m services.cli.src.cli seed --count 10
-
-# Export to JSON
-uv run python -m services.cli.src.cli export --output exercises.json
-
-# Help
-uv run python -m services.cli.src.cli --help
-```
-
-**With Docker:**
-```bash
-docker-compose run --rm cli python -m services.cli.src.cli list
-docker-compose run --rm cli python -m services.cli.src.cli stats
-docker-compose run --rm cli python -m services.cli.src.cli seed --count 5
-```
 
 ## Running Tests
 
@@ -221,31 +160,19 @@ pytest -v
 
 # Run specific test file
 pytest services/api/tests/test_api.py -v
-pytest services/cli/tests/test_cli.py -v
+pytest services/frontend/tests/test_client.py -v
 
 # Run with coverage
 pytest --cov=services
 ```
 
-### CLI Tests
-
-CLI tests use Typer's `CliRunner` to verify command execution:
-
-```bash
-pytest services/cli/tests/test_cli.py -v
-```
 
 ## Database
 
 - **Type:** SQLite
 - **Location:** `data/workout_tracker.db`
 - **Persistence:** Data persists via Docker volume mount or local file
-- **Seed data:** Auto-created on first run, or use CLI to seed
-
-```bash
-# Seed sample exercises
-uv run python -m services.cli.src.cli seed --count 10
-```
+- **Seed data:** Use the dashboard to add exercises
 
 ## Tech Stack
 
@@ -254,7 +181,6 @@ uv run python -m services.cli.src.cli seed --count 10
 - **Database:** SQLite3
 - **Validation:** Pydantic 2.10+
 - **Dashboard:** Streamlit 1.40+
-- **CLI:** Typer + Rich
 - **HTTP Client:** httpx
 - **Package Manager:** uv
 - **Container:** Docker + Docker Compose
@@ -269,5 +195,4 @@ uv run python -m services.cli.src.cli seed --count 10
 - All generated code was tested locally using `pytest`
 - API endpoints verified via Swagger UI and `scripts/api.http`
 - Dashboard functionality tested manually in browser
-- CLI commands tested via `CliRunner` and manual execution
 - Docker builds verified with `docker-compose up --build`
