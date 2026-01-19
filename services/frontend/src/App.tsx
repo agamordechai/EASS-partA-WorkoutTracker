@@ -3,7 +3,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Metrics, ExerciseList, CreateExerciseForm, EditExerciseModal } from './components';
+import {
+  Metrics,
+  ExerciseList,
+  CreateExerciseForm,
+  EditExerciseModal,
+  AICoachChat,
+  RecommendationPanel,
+} from './components';
 import {
   listExercises,
   createExercise,
@@ -18,6 +25,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
 
   // Fetch exercises
   const fetchExercises = useCallback(async () => {
@@ -105,6 +114,23 @@ function App() {
         >
           {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
+
+        <div className="sidebar-section">
+          <h3>🤖 AI Coach</h3>
+          <button
+            className="btn btn-coach full-width"
+            onClick={() => setShowAIChat(true)}
+          >
+            💬 Chat with Coach
+          </button>
+          <button
+            className="btn btn-coach full-width"
+            onClick={() => setShowRecommendations(true)}
+          >
+            💪 Get Recommendations
+          </button>
+        </div>
+
         <p className="sidebar-tip">Tip: Data refreshes automatically every 30 seconds</p>
       </aside>
 
@@ -139,6 +165,14 @@ function App() {
                 onSubmit={handleUpdate}
                 onCancel={() => setEditingExercise(null)}
               />
+            )}
+
+            {showAIChat && (
+              <AICoachChat onClose={() => setShowAIChat(false)} />
+            )}
+
+            {showRecommendations && (
+              <RecommendationPanel onClose={() => setShowRecommendations(false)} />
             )}
           </>
         )}
