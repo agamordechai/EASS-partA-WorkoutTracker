@@ -14,13 +14,9 @@ import uuid
 
 from services.api.src.database.config import get_settings
 from services.api.src.database.models import Exercise, ExerciseResponse, ExerciseEditRequest, HealthResponse
-from services.api.src.database.repository import (
-    get_all_exercises,
-    get_exercise_by_id,
-    create_exercise,
-    edit_exercise,
-    delete_exercise
-)
+from services.api.src.database.dependencies import RepositoryDep
+from services.api.src.database.database import init_db, get_session
+from services.api.src.database.sqlmodel_repository import ExerciseRepository
 from services.api.src.auth import (
     User,
     Token,
@@ -61,8 +57,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     logger.info(f"Starting Workout Tracker API v{settings.api.version}")
-    logger.info(f"Database path: {settings.db.path}")
+    logger.info(f"Database: {'PostgreSQL' if settings.db.is_postgres else 'SQLite'}")
     logger.info(f"Debug mode: {settings.api.debug}")
+
+    # Initialize database tables
+    init_db()
+    logger.info("Database tables initialized")
+
+    # Seed initial data if database is empty
+    with next(get_session()) as session:
+        repo = ExerciseRepository(session)
+        count = repo.seed_initial_data()
+        if count > 0:
+            logger.info(f"Seeded {count} initial exercises")
 
     yield
 
@@ -162,8 +169,10 @@ def health_check() -> HealthResponse:
 
     try:
         # Quick database connectivity check
-        exercises = get_all_exercises()
-        exercise_count = len(exercises) if exercises else 0
+        with next(get_session()) as session:
+            repo = ExerciseRepository(session)
+            exercises = repo.get_all()
+            exercise_count = len(exercises)
     except Exception as e:
         db_healthy = False
         db_message = f"Error: {str(e)}"
@@ -182,17 +191,17 @@ def health_check() -> HealthResponse:
 
 
 @app.get('/exercises', response_model=List[ExerciseResponse])
-def read_exercises() -> List[ExerciseResponse]:
+def read_exercises(repository: RepositoryDep) -> List[ExerciseResponse]:
     """Get all exercises from the database.
 
     Returns:
         List[ExerciseResponse]: A list of all exercises with their details.
     """
-    return get_all_exercises()
+    return repository.get_all()
 
 
 @app.get('/exercises/{exercise_id}', response_model=ExerciseResponse)
-def read_exercise(exercise_id: int) -> ExerciseResponse:
+def read_exercise(exercise_id: int, repository: RepositoryDep) -> ExerciseResponse:
     """Get a specific exercise by ID.
 
     Args:
@@ -204,14 +213,14 @@ def read_exercise(exercise_id: int) -> ExerciseResponse:
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
-    exercise = get_exercise_by_id(exercise_id)
+    exercise = repository.get_by_id(exercise_id)
     if not exercise:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return exercise
 
 
 @app.post('/exercises', response_model=ExerciseResponse, status_code=201)
-def add_exercise(exercise: Exercise) -> ExerciseResponse:
+def add_exercise(exercise: Exercise, repository: RepositoryDep) -> ExerciseResponse:
     """Create a new exercise in the database.
 
     Args:
@@ -220,18 +229,21 @@ def add_exercise(exercise: Exercise) -> ExerciseResponse:
     Returns:
         ExerciseResponse: The newly created exercise with its assigned ID.
     """
-    new_exercise = create_exercise(
+    return repository.create(
         name=exercise.name,
         sets=exercise.sets,
         reps=exercise.reps,
         weight=exercise.weight,
         workout_day=exercise.workout_day
     )
-    return new_exercise
 
 
 @app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse)
-def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest) -> ExerciseResponse:
+def edit_exercise_endpoint(
+    exercise_id: int,
+    exercise_edit: ExerciseEditRequest,
+    repository: RepositoryDep
+) -> ExerciseResponse:
     """Update any attributes of a specific exercise.
 
     Args:
@@ -249,7 +261,7 @@ def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest)
     provided_fields = exercise_edit.model_dump(exclude_unset=True)
     update_weight_flag = 'weight' in provided_fields
 
-    exercise = edit_exercise(
+    exercise = repository.update(
         exercise_id,
         name=exercise_edit.name,
         sets=exercise_edit.sets,
@@ -264,7 +276,7 @@ def edit_exercise_endpoint(exercise_id: int, exercise_edit: ExerciseEditRequest)
 
 
 @app.delete('/exercises/{exercise_id}', status_code=204)
-def delete_exercise_endpoint(exercise_id: int) -> None:
+def delete_exercise_endpoint(exercise_id: int, repository: RepositoryDep) -> None:
     """Delete a specific exercise from the database.
 
     Args:
@@ -276,7 +288,7 @@ def delete_exercise_endpoint(exercise_id: int) -> None:
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
-    success = delete_exercise(exercise_id)
+    success = repository.delete(exercise_id)
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
@@ -360,7 +372,8 @@ async def list_users(
 @app.delete('/admin/exercises/{exercise_id}', status_code=204, tags=["Admin"])
 async def admin_delete_exercise(
     exercise_id: int,
-    current_user: Annotated[User, Depends(require_admin)]
+    current_user: Annotated[User, Depends(require_admin)],
+    repository: RepositoryDep
 ) -> None:
     """Delete exercise (admin only, protected route).
 
@@ -371,7 +384,7 @@ async def admin_delete_exercise(
     Raises:
         HTTPException: 404 if exercise not found
     """
-    success = delete_exercise(exercise_id)
+    success = repository.delete(exercise_id)
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
