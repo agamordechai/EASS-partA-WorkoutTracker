@@ -1,0 +1,27 @@
+[project]
+name = "workout-tracker-worker"
+version = "0.1.0"
+description = "Background worker service for workout tracker"
+requires-python = ">=3.12"
+
+dependencies = [
+    "arq>=0.26.1",
+    "redis>=5.2.1",
+    "httpx>=0.28.1",
+    "pydantic>=2.10.5",
+    "pydantic-settings>=2.7.1",
+    "fastapi>=0.115.6",
+    "uvicorn>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.24.0",
+    "pytest-anyio>=0.0.0",
+    "pytest-mock>=3.14.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

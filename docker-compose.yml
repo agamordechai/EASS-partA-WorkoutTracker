@@ -119,6 +119,48 @@ services:
     networks:
       - workout-net
 
+  # Background Worker Service
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: workout-tracker-worker
+    environment:
+      - WORKER_LOG_LEVEL=INFO
+      - WORKER_REDIS__HOST=redis
+      - WORKER_REDIS__PORT=6379
+      - WORKER_REDIS__DATABASE=1
+      - WORKER_REDIS__CACHE_DATABASE=0
+      - WORKER_API_CLIENT__WORKOUT_API_URL=http://api:8000
+      - WORKER_API_CLIENT__AI_COACH_URL=http://ai-coach:8001
+      - WORKER_WORKER__MAX_JOBS=10
+      - WORKER_WORKER__JOB_TIMEOUT=300
+      - WORKER_SCHEDULE__ENABLE_HOURLY_REFRESH=true
+      - WORKER_SCHEDULE__ENABLE_DAILY_WARMUP=true
+      - WORKER_SCHEDULE__ENABLE_WEEKLY_CLEANUP=true
+      - WORKER_SCHEDULE__WARMUP_HOUR=6
+      - WORKER_SCHEDULE__CLEANUP_DAY_OF_WEEK=6
+      - WORKER_SCHEDULE__CLEANUP_HOUR=2
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      api:
+        condition: service_healthy
+      ai-coach:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - workout-net
+    ports:
+      - "8002:8002"
+
   frontend:
     build:
       context: ./services/frontend
