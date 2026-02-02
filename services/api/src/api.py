@@ -30,6 +30,13 @@ from services.api.src.auth import (
     USERS_DB,
 )
 from typing import Annotated
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from services.api.src.ratelimit import (
+    get_rate_limit_key,
+    rate_limit_exceeded_handler,
+    get_ratelimit_settings
+)
 
 # Get application settings
 settings = get_settings()
@@ -40,6 +47,16 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter
+ratelimit_settings = get_ratelimit_settings()
+limiter = Limiter(
+    key_func=get_rate_limit_key,
+    storage_uri=ratelimit_settings.redis_url,
+    enabled=ratelimit_settings.enabled,
+    headers_enabled=False,  # Disabled due to FastAPI response_model compatibility
+    swallow_errors=True  # Graceful degradation if Redis unavailable
+)
 
 
 @asynccontextmanager
@@ -87,6 +104,12 @@ app = FastAPI(
     debug=settings.api.debug,
     lifespan=lifespan
 )
+
+# Add limiter to app state
+app.state.limiter = limiter
+
+# Add custom exception handler for rate limit exceeded
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
@@ -144,7 +167,8 @@ async def request_logging_middleware(
 
 
 @app.get('/')
-def read_root() -> dict[str, str]:
+@limiter.limit(lambda: ratelimit_settings.public_limit)
+def read_root(request: Request) -> dict[str, str]:
     """Get the root endpoint welcome message.
 
     Returns:
@@ -191,7 +215,8 @@ def health_check() -> HealthResponse:
 
 
 @app.get('/exercises', response_model=List[ExerciseResponse])
-def read_exercises(repository: RepositoryDep) -> List[ExerciseResponse]:
+@limiter.limit("120/minute")  # User-level read limit
+def read_exercises(request: Request, repository: RepositoryDep) -> List[ExerciseResponse]:
     """Get all exercises from the database.
 
     Returns:
@@ -201,7 +226,8 @@ def read_exercises(repository: RepositoryDep) -> List[ExerciseResponse]:
 
 
 @app.get('/exercises/{exercise_id}', response_model=ExerciseResponse)
-def read_exercise(exercise_id: int, repository: RepositoryDep) -> ExerciseResponse:
+@limiter.limit("120/minute")  # User-level read limit
+def read_exercise(request: Request, exercise_id: int, repository: RepositoryDep) -> ExerciseResponse:
     """Get a specific exercise by ID.
 
     Args:
@@ -220,7 +246,8 @@ def read_exercise(exercise_id: int, repository: RepositoryDep) -> ExerciseRespon
 
 
 @app.post('/exercises', response_model=ExerciseResponse, status_code=201)
-def add_exercise(exercise: Exercise, repository: RepositoryDep) -> ExerciseResponse:
+@limiter.limit("60/minute")  # User-level write limit
+def add_exercise(request: Request, exercise: Exercise, repository: RepositoryDep) -> ExerciseResponse:
     """Create a new exercise in the database.
 
     Args:
@@ -239,7 +266,9 @@ def add_exercise(exercise: Exercise, repository: RepositoryDep) -> ExerciseRespo
 
 
 @app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse)
+@limiter.limit("60/minute")  # User-level write limit
 def edit_exercise_endpoint(
+    request: Request,
     exercise_id: int,
     exercise_edit: ExerciseEditRequest,
     repository: RepositoryDep
@@ -276,7 +305,8 @@ def edit_exercise_endpoint(
 
 
 @app.delete('/exercises/{exercise_id}', status_code=204)
-def delete_exercise_endpoint(exercise_id: int, repository: RepositoryDep) -> None:
+@limiter.limit("60/minute")  # User-level write limit
+def delete_exercise_endpoint(request: Request, exercise_id: int, repository: RepositoryDep) -> None:
     """Delete a specific exercise from the database.
 
     Args:
@@ -297,7 +327,8 @@ def delete_exercise_endpoint(exercise_id: int, repository: RepositoryDep) -> Non
 # ============ Authentication Endpoints ============
 
 @app.post('/auth/login', response_model=Token, tags=["Authentication"])
-def login(login_request: LoginRequest) -> Token:
+@limiter.limit(lambda: ratelimit_settings.auth_limit)
+def login(request: Request, login_request: LoginRequest) -> Token:
     """Authenticate user and return JWT tokens.
 
     Args:
@@ -332,7 +363,9 @@ def login(login_request: LoginRequest) -> Token:
 
 
 @app.get('/auth/me', response_model=User, tags=["Authentication"])
+@limiter.limit(lambda: ratelimit_settings.auth_limit)
 async def get_me(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_active_user)]
 ) -> User:
     """Get current authenticated user info.
@@ -347,7 +380,9 @@ async def get_me(
 
 
 @app.get('/admin/users', tags=["Admin"])
+@limiter.limit(lambda: ratelimit_settings.admin_limit)
 async def list_users(
+    request: Request,
     current_user: Annotated[User, Depends(require_admin)]
 ) -> list[dict]:
     """List all users (admin only).
@@ -370,7 +405,9 @@ async def list_users(
 
 
 @app.delete('/admin/exercises/{exercise_id}', status_code=204, tags=["Admin"])
+@limiter.limit(lambda: ratelimit_settings.admin_limit)
 async def admin_delete_exercise(
+    request: Request,
     exercise_id: int,
     current_user: Annotated[User, Depends(require_admin)],
     repository: RepositoryDep
