@@ -14,18 +14,14 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Set Python environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_SYSTEM_PYTHON=1 \
+    PYTHONPATH=/app
 
-# Install Python dependencies using uv
-RUN uv pip install --system \
-    arq \
-    redis \
-    httpx \
-    pydantic \
-    pydantic-settings \
-    fastapi \
-    uvicorn
+# Install dependencies from pyproject.toml
+COPY services/worker/pyproject.toml ./pyproject.toml
+RUN uv sync --no-dev --no-install
 
 # Copy shared services module
 COPY services/__init__.py /app/services/

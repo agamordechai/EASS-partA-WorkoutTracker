@@ -18,15 +18,9 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1 \
     PYTHONPATH=/app
 
-# Install dependencies directly
-RUN uv pip install --system \
-    "fastapi>=0.115.0" \
-    "uvicorn[standard]>=0.32.0" \
-    "pydantic>=2.10.0" \
-    "pydantic-settings>=2.0.0" \
-    "pydantic-ai>=0.0.24" \
-    "httpx>=0.27.0" \
-    "redis>=5.0.0"
+# Install dependencies from pyproject.toml
+COPY services/ai_coach/pyproject.toml ./pyproject.toml
+RUN uv sync --no-dev --no-install
 
 # Copy AI Coach source code
 COPY services/__init__.py ./services/

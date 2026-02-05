@@ -18,27 +18,9 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1 \
     PYTHONPATH=/app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* ./
-
 # Install dependencies from pyproject.toml
-RUN uv pip install --system \
-    "fastapi>=0.115.0" \
-    "uvicorn[standard]>=0.32.0" \
-    "pydantic>=2.10.0" \
-    "pydantic-settings>=2.0.0" \
-    "sqlmodel>=0.0.14" \
-    "alembic>=1.13.0" \
-    "psycopg2-binary>=2.9.9" \
-    "typer>=0.9.0" \
-    "rich>=13.0.0" \
-    "httpx>=0.27.0" \
-    "pandas>=2.2.0" \
-    "redis>=5.0.0" \
-    "pyjwt>=2.8.0" \
-    "slowapi>=0.1.9" \
-    "arq>=0.25.0" \
-    "logfire>=0.41.0"
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --frozen --no-install
 
 # Copy API source code
 COPY services/__init__.py ./services/
