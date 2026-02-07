@@ -75,10 +75,16 @@ docker compose down
 - `frontend` depends on `api` (healthy)
 
 ### Environment Variables
-Create a `.env` file with:
+Create a `.env` file in the project root from the template:
 ```bash
+# Copy from config directory (or use symlink)
+cp config/.env.example .env
+# OR
+cp .env.example .env
+
+# Edit .env and add your API key:
 # Required for AI Coach
-OPENAI_API_KEY=your-api-key-here
+ANTHROPIC_API_KEY=your-api-key-here
 
 # Optional overrides
 AI_MODEL=openai:gpt-4o-mini

@@ -23,7 +23,8 @@ ENV PYTHONUNBUFFERED=1 \
 # Install dependencies from pyproject.toml
 COPY services/worker/pyproject.toml ./pyproject.toml
 COPY services/__init__.py /app/services/
-COPY scripts/refresh.py /app/scripts/
+COPY services/shared/ /app/services/shared/
+COPY dev/ /app/dev/
 COPY services/worker/ /app/services/worker/
 RUN uv sync --no-dev --no-install-project
 

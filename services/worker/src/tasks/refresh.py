@@ -10,7 +10,7 @@ except ImportError:
     REDIS_AVAILABLE = False
     redis = None
 
-from scripts.refresh import ExerciseRefresher, IdempotencyStore, RefreshConfig
+from dev.refresh import ExerciseRefresher, IdempotencyStore, RefreshConfig
 
 from ..config import get_settings
 

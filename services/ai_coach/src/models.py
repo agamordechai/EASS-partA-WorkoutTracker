@@ -3,6 +3,12 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
 
+# Import shared Exercise models
+from services.shared.models import ExerciseResponse
+
+# Alias for backward compatibility
+ExerciseFromAPI = ExerciseResponse
+
 
 class MuscleGroup(str, Enum):
     """Muscle groups for workout categorization."""
@@ -14,16 +20,6 @@ class MuscleGroup(str, Enum):
     LEGS = "legs"
     CORE = "core"
     FULL_BODY = "full_body"
-
-
-class ExerciseFromAPI(BaseModel):
-    """Exercise model matching the main API response."""
-    id: int
-    name: str
-    sets: int
-    reps: int
-    weight: Optional[float] = None
-    workout_day: str = "A"  # A-G for specific days, "None" for daily exercises
 
 
 class WorkoutContext(BaseModel):

@@ -1,14 +1,23 @@
 # Docker Compose Runbook
 
+> **Note:** Configuration files are located in `/config/docker-compose.yml`. A symlink exists in the root directory for backward compatibility.
+
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- `.env` file with `OPENAI_API_KEY` (for AI Coach)
+- `.env` file with `ANTHROPIC_API_KEY` (for AI Coach)
+  - Copy from template: `cp config/.env.example .env`
+  - Or use the symlink: `cp .env.example .env`
+  - Edit to add your OpenAI API key
 
 ## Quick Start
 
 ```bash
-# Start all services
+# 1. Create .env file (if not already done)
+cp config/.env.example .env
+# Edit .env and add: ANTHROPIC_API_KEY=your-anthropic-api-key-here
+
+# 2. Start all services
 docker compose up -d
 
 # Wait for services to be healthy
@@ -130,7 +139,7 @@ docker compose exec db psql -U workout -d workout_tracker
 ```
 
 ### AI Coach Not Responding
-1. Check `OPENAI_API_KEY` is set in `.env`
+1. Check `ANTHROPIC_API_KEY` is set in `.env`
 2. Verify API is healthy: `curl http://localhost:8000/health`
 3. Check Redis connection: `docker compose exec redis redis-cli ping`
 

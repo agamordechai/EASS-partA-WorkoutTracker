@@ -5,7 +5,7 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 ## Prerequisites
 
 - **Docker** and **Docker Compose** (recommended)
-- **OpenAI API Key** (for AI Coach features)
+- **Anthropic API Key** (for AI Coach features - uses Claude)
 - Or for local development:
   - Python 3.12+
   - [uv](https://docs.astral.sh/uv/) package manager
@@ -13,7 +13,16 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 ## Project Structure
 
 ```
+├── config/                  # Configuration files
+│   ├── docker-compose.yml   # Multi-service orchestration
+│   └── .env.example         # Environment variable template
+│
 ├── services/
+│   ├── shared/              # Shared library for all services
+│   │   ├── models/          # Common Pydantic models
+│   │   ├── clients/         # Base HTTP clients
+│   │   └── config/          # Shared configuration utilities
+│   │
 │   ├── api/                 # FastAPI REST service
 │   │   ├── Dockerfile       # API container definition
 │   │   ├── pyproject.toml   # API-specific dependencies
@@ -53,33 +62,37 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 │   ├── test_refresh.py      # Tests for refresh script
 │   └── demo.sh              # Demo script for EX3
 │
-├── docker-compose.yml       # Multi-service orchestration
+├── docker-compose.yml       # Symlink to config/docker-compose.yml
+├── .env.example             # Symlink to config/.env.example
 └── pyproject.toml           # Root project dependencies (for local dev)
 ```
+
+> **Note:** Configuration files are now organized in `/config/`. Symlinks in the root directory provide backward compatibility.
 
 ## Setup
 
 ### Option 1: Docker Compose (Recommended)
 
 ```bash
-# 1. Create .env file with your OpenAI API key
+# 1. Create .env file with your Anthropic API key
+# The template is in config/.env.example (symlinked to root for convenience)
 cp .env.example .env
-# Edit .env and add: OPENAI_API_KEY=your-key-here
+# Edit .env and add: ANTHROPIC_API_KEY=your-anthropic-key-here
 
 # 2. Start all services (database, API, AI Coach, frontend)
-docker-compose up -d
+docker compose up -d
 
 # 3. Check all services are running
-docker-compose ps
+docker compose ps
 
 # 4. Open frontend
 open http://localhost:3000
 
 # 5. Stop all services
-docker-compose down
+docker compose down
 
 # 6. Stop and remove all data (fresh start)
-docker-compose down -v
+docker compose down -v
 ```
 
 **Services:**
@@ -100,14 +113,22 @@ uv sync
 # Terminal 1 - Start API
 uv run uvicorn services.api.src.api:app --reload
 
-# Terminal 2 - Start AI Coach (requires OPENAI_API_KEY)
-export OPENAI_API_KEY=your-key-here
+# Terminal 2 - Start AI Coach (requires ANTHROPIC_API_KEY)
+export ANTHROPIC_API_KEY=your-key-here
 uv run uvicorn services.ai_coach.src.api:app --port 8001 --reload
 ```
 
 > **Note:** Local development uses SQLite by default. Set `DATABASE_URL` environment variable to use PostgreSQL.
 
 ## Configuration
+
+Configuration files are organized in `/config/`:
+- **`config/docker-compose.yml`** - Multi-service orchestration
+- **`config/.env.example`** - Environment variable template
+
+> **Note:** For convenience, both files are symlinked in the project root. Your actual `.env` file should be in the project root (it's gitignored).
+
+### Environment Variables
 
 The application uses sensible defaults. Override via environment variables:
 
@@ -118,10 +139,19 @@ The application uses sensible defaults. Override via environment variables:
 | `API_DEBUG` | `false` | Enable debug mode |
 | `APP_LOG_LEVEL` | `INFO` | Logging level |
 | `APP_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `ANTHROPIC_API_KEY` | (required) | Anthropic API key for AI Coach (Claude) |
+| `AI_MODEL` | `anthropic:claude-3-5-haiku-latest` | AI model to use |
+
+### Setup Environment
 
 ```bash
-# Optional: Create .env from example
+# Copy the template from config/ (or use the symlink in root)
+cp config/.env.example .env
+# OR
 cp .env.example .env
+
+# Edit .env and add your Anthropic API key
+echo "ANTHROPIC_API_KEY=your-anthropic-api-key-here" >> .env
 ```
 
 ## API Endpoints

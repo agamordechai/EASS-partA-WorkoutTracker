@@ -1,0 +1,204 @@
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: workout-tracker-db
+    environment:
+      - POSTGRES_USER=workout
+      - POSTGRES_PASSWORD=workout123
+      - POSTGRES_DB=workout_tracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workout -d workout_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - workout-net
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: workout-tracker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - workout-net
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: workout-tracker-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the data directory for exports
+      - ./data:/app/data
+      # For development: mount the services code to enable hot-reloading
+      # - ./services:/app/services
+    environment:
+      # Application configuration
+      - APP_ENVIRONMENT=production
+      - APP_LOG_LEVEL=INFO
+      - APP_CORS_ORIGINS=*
+
+      # Database configuration - PostgreSQL connection
+      - DATABASE_URL=postgresql://workout:workout123@db:5432/workout_tracker
+
+      # API configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=2
+
+      # Python configuration
+      - PYTHONUNBUFFERED=1
+
+      # Rate limiting configuration
+      - RATELIMIT_ENABLED=true
+      - RATELIMIT_REDIS_URL=redis://redis:6379/2
+      - RATELIMIT_PUBLIC_LIMIT=100/minute
+      - RATELIMIT_AUTH_LIMIT=10/minute
+      - RATELIMIT_READ_LIMIT_ANONYMOUS=60/minute
+      - RATELIMIT_READ_LIMIT_USER=120/minute
+      - RATELIMIT_READ_LIMIT_ADMIN=300/minute
+      - RATELIMIT_WRITE_LIMIT_ANONYMOUS=30/minute
+      - RATELIMIT_WRITE_LIMIT_USER=60/minute
+      - RATELIMIT_WRITE_LIMIT_ADMIN=150/minute
+      - RATELIMIT_ADMIN_LIMIT=100/minute
+    # Alternative: use env_file for production
+    # env_file:
+    #   - .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - workout-net
+
+  # AI Workout Coach Service
+  ai-coach:
+    build:
+      context: .
+      dockerfile: services/ai_coach/Dockerfile
+    container_name: workout-tracker-ai-coach
+    ports:
+      - "8001:8001"
+    environment:
+      # AI configuration
+      - AI_MODEL=anthropic:claude-3-5-haiku-latest
+      - AI_TEMPERATURE=0.7
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # Service URLs
+      - WORKOUT_API_URL=http://api:8000
+      - REDIS_URL=redis://redis:6379/0
+
+      # Service configuration
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=8001
+      - LOG_LEVEL=INFO
+
+      # Python configuration
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - workout-net
+
+  # Background Worker Service
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: workout-tracker-worker
+    environment:
+      - WORKER_LOG_LEVEL=INFO
+      - WORKER_REDIS__HOST=redis
+      - WORKER_REDIS__PORT=6379
+      - WORKER_REDIS__DATABASE=1
+      - WORKER_REDIS__CACHE_DATABASE=0
+      - WORKER_API_CLIENT__WORKOUT_API_URL=http://api:8000
+      - WORKER_API_CLIENT__AI_COACH_URL=http://ai-coach:8001
+      - WORKER_WORKER__MAX_JOBS=10
+      - WORKER_WORKER__JOB_TIMEOUT=300
+      - WORKER_SCHEDULE__ENABLE_HOURLY_REFRESH=true
+      - WORKER_SCHEDULE__ENABLE_DAILY_WARMUP=true
+      - WORKER_SCHEDULE__ENABLE_WEEKLY_CLEANUP=true
+      - WORKER_SCHEDULE__WARMUP_HOUR=6
+      - WORKER_SCHEDULE__CLEANUP_DAY_OF_WEEK=6
+      - WORKER_SCHEDULE__CLEANUP_HOUR=2
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      api:
+        condition: service_healthy
+      ai-coach:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - workout-net
+    ports:
+      - "8002:8002"
+
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: workout-tracker-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - workout-net
+
+
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  data:
+    driver: local
+
+networks:
+  workout-net:
+    driver: bridge
+

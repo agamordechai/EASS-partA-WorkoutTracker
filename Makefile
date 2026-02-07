@@ -69,16 +69,16 @@ format-check:  ## Check formatting without modifying
 # -------------------
 
 db-seed:  ## Seed database with sample data
-	uv run python scripts/cli.py seed --count 10
+	uv run python cli/workout_cli.py seed --count 10
 
 db-reset:  ## Reset database (WARNING: deletes all data)
-	uv run python scripts/cli.py reset --yes --sample 5
+	uv run python cli/workout_cli.py reset --yes --sample 5
 
 stats:  ## Show workout statistics
-	uv run python scripts/cli.py stats
+	uv run python cli/workout_cli.py stats
 
 export-csv:  ## Export exercises to CSV
-	uv run python scripts/cli.py export --format csv
+	uv run python cli/workout_cli.py export --format csv
 
 # Docker Commands
 # ---------------

@@ -22,6 +22,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Install dependencies from pyproject.toml
 COPY services/ai_coach/pyproject.toml ./pyproject.toml
 COPY services/__init__.py ./services/
+COPY services/shared/ ./services/shared/
 COPY services/ai_coach/ ./services/ai_coach/
 RUN uv sync --no-dev --no-install-project
 
