@@ -29,7 +29,6 @@ from services.api.src.auth import (
     create_refresh_token,
     get_current_active_user,
     require_admin,
-    require_user_or_admin,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     USERS_DB,
 )
@@ -313,7 +312,6 @@ def add_exercise(
     request: Request,
     exercise: Exercise,
     repository: RepositoryDep,
-    current_user: Annotated[User, Depends(require_user_or_admin)]
 ) -> ExerciseResponse:
     """Create a new exercise in the database (requires authentication).
 
@@ -340,7 +338,6 @@ def edit_exercise_endpoint(
     exercise_id: int,
     exercise_edit: ExerciseEditRequest,
     repository: RepositoryDep,
-    current_user: Annotated[User, Depends(require_user_or_admin)]
 ) -> ExerciseResponse:
     """Update any attributes of a specific exercise (requires authentication).
 
@@ -380,7 +377,6 @@ def delete_exercise_endpoint(
     request: Request,
     exercise_id: int,
     repository: RepositoryDep,
-    current_user: Annotated[User, Depends(require_user_or_admin)]
 ) -> None:
     """Delete a specific exercise from the database (requires authentication).
 
