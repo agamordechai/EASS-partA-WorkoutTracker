@@ -26,9 +26,6 @@ The Workout Tracker project has been reorganized to improve maintainability, red
 **After:**
 ```
 /
-├── config/               # NEW: Configuration files
-│   ├── docker-compose.yml
-│   └── .env.example
 ├── cli/                  # NEW: User-facing CLI tools
 │   ├── workout_cli.py
 │   └── tests/
@@ -54,8 +51,8 @@ The Workout Tracker project has been reorganized to improve maintainability, red
 │   ├── architecture/     # NEW: Architecture docs
 │   ├── service-contract.md    # MOVED
 │   └── exercises.md           # MOVED
-├── docker-compose.yml    # Symlink to config/
-└── .env.example          # Symlink to config/
+├── docker-compose.yml    # Multi-service orchestration
+└── .env.example          # Environment template
 ```
 
 ### File Movements
@@ -71,8 +68,6 @@ The Workout Tracker project has been reorganized to improve maintainability, red
 | `scripts/test_refresh.py` | `dev/tests/test_refresh.py` | |
 | `scripts/exercises_mcp.py` | `mcp/exercises_server.py` | |
 | `scripts/mcp_probe.py` | `mcp/probe.py` | |
-| `docker-compose.yml` | `config/docker-compose.yml` | Symlink in root |
-| `.env.example` | `config/.env.example` | Symlink in root |
 | `service-contract.md` | `docs/service-contract.md` | |
 | `exercises.md` | `docs/exercises.md` | |
 
@@ -157,7 +152,7 @@ Update any references to:
 
 ## Backward Compatibility
 
-- **Symlinks**: `docker-compose.yml` and `.env.example` remain in root via symlinks
+- **Configuration files**: `docker-compose.yml` and `.env.example` remain in root
 - **Deprecated wrapper**: `scripts/cli.py` still works but shows a deprecation warning
 - **Makefile**: All commands updated to use new paths
 

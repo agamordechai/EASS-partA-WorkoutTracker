@@ -13,10 +13,6 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 ## Project Structure
 
 ```
-├── config/                  # Configuration files
-│   ├── docker-compose.yml   # Multi-service orchestration
-│   └── .env.example         # Environment variable template
-│
 ├── services/
 │   ├── shared/              # Shared library for all services
 │   │   ├── models/          # Common Pydantic models
@@ -62,12 +58,10 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 │   ├── test_refresh.py      # Tests for refresh script
 │   └── demo.sh              # Demo script for EX3
 │
-├── docker-compose.yml       # Symlink to config/docker-compose.yml
-├── .env.example             # Symlink to config/.env.example
+├── docker-compose.yml       # Multi-service orchestration
+├── .env.example             # Environment variable template
 └── pyproject.toml           # Root project dependencies (for local dev)
 ```
-
-> **Note:** Configuration files are now organized in `/config/`. Symlinks in the root directory provide backward compatibility.
 
 ## Setup
 
@@ -75,7 +69,6 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 
 ```bash
 # 1. Create .env file with your Anthropic API key
-# The template is in config/.env.example (symlinked to root for convenience)
 cp .env.example .env
 # Edit .env and add: ANTHROPIC_API_KEY=your-anthropic-key-here
 
@@ -122,11 +115,11 @@ uv run uvicorn services.ai_coach.src.api:app --port 8001 --reload
 
 ## Configuration
 
-Configuration files are organized in `/config/`:
-- **`config/docker-compose.yml`** - Multi-service orchestration
-- **`config/.env.example`** - Environment variable template
+Configuration files are in the project root:
+- **`docker-compose.yml`** - Multi-service orchestration
+- **`.env.example`** - Environment variable template
 
-> **Note:** For convenience, both files are symlinked in the project root. Your actual `.env` file should be in the project root (it's gitignored).
+> **Note:** Your actual `.env` file should be in the project root (it's gitignored).
 
 ### Environment Variables
 
@@ -145,9 +138,7 @@ The application uses sensible defaults. Override via environment variables:
 ### Setup Environment
 
 ```bash
-# Copy the template from config/ (or use the symlink in root)
-cp config/.env.example .env
-# OR
+# Copy the template
 cp .env.example .env
 
 # Edit .env and add your Anthropic API key

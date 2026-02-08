@@ -1,4 +1,5 @@
 """Authentication and authorization module for Workout Tracker API."""
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Annotated
 from enum import Enum
@@ -9,8 +10,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 import jwt
 
-# Security configuration
-SECRET_KEY = "your-secret-key-change-in-production"  # Override via environment
+# Security configuration - load from environment variable
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7

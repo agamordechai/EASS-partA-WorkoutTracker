@@ -77,9 +77,7 @@ docker compose down
 ### Environment Variables
 Create a `.env` file in the project root from the template:
 ```bash
-# Copy from config directory (or use symlink)
-cp config/.env.example .env
-# OR
+# Copy from config directory
 cp .env.example .env
 
 # Edit .env and add your API key:

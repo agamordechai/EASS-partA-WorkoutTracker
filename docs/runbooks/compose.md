@@ -1,20 +1,19 @@
 # Docker Compose Runbook
 
-> **Note:** Configuration files are located in `/config/docker-compose.yml`. A symlink exists in the root directory for backward compatibility.
+> **Note:** Configuration files (`docker-compose.yml`, `.env.example`) are located in the project root.
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
 - `.env` file with `ANTHROPIC_API_KEY` (for AI Coach)
-  - Copy from template: `cp config/.env.example .env`
-  - Or use the symlink: `cp .env.example .env`
-  - Edit to add your OpenAI API key
+  - Copy from template: `cp .env.example .env`
+  - Edit to add your Anthropic API key
 
 ## Quick Start
 
 ```bash
 # 1. Create .env file (if not already done)
-cp config/.env.example .env
+cp .env.example .env
 # Edit .env and add: ANTHROPIC_API_KEY=your-anthropic-api-key-here
 
 # 2. Start all services

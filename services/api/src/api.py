@@ -29,6 +29,7 @@ from services.api.src.auth import (
     create_refresh_token,
     get_current_active_user,
     require_admin,
+    require_user_or_admin,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     USERS_DB,
 )
@@ -306,13 +307,19 @@ def read_exercise(request: Request, exercise_id: int, repository: RepositoryDep)
     return exercise
 
 
-@app.post('/exercises', response_model=ExerciseResponse, status_code=201)
+@app.post('/exercises', response_model=ExerciseResponse, status_code=201, tags=["Exercises"])
 @limiter.limit("60/minute")  # User-level write limit
-def add_exercise(request: Request, exercise: Exercise, repository: RepositoryDep) -> ExerciseResponse:
-    """Create a new exercise in the database.
+def add_exercise(
+    request: Request,
+    exercise: Exercise,
+    repository: RepositoryDep,
+    current_user: Annotated[User, Depends(require_user_or_admin)]
+) -> ExerciseResponse:
+    """Create a new exercise in the database (requires authentication).
 
     Args:
         exercise (Exercise): The exercise data including name, sets, reps, optional weight, and workout_day.
+        current_user: Authenticated user (USER or ADMIN role required).
 
     Returns:
         ExerciseResponse: The newly created exercise with its assigned ID.
@@ -326,19 +333,21 @@ def add_exercise(request: Request, exercise: Exercise, repository: RepositoryDep
     )
 
 
-@app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse)
+@app.patch('/exercises/{exercise_id}', response_model=ExerciseResponse, tags=["Exercises"])
 @limiter.limit("60/minute")  # User-level write limit
 def edit_exercise_endpoint(
     request: Request,
     exercise_id: int,
     exercise_edit: ExerciseEditRequest,
-    repository: RepositoryDep
+    repository: RepositoryDep,
+    current_user: Annotated[User, Depends(require_user_or_admin)]
 ) -> ExerciseResponse:
-    """Update any attributes of a specific exercise.
+    """Update any attributes of a specific exercise (requires authentication).
 
     Args:
         exercise_id (int): The unique identifier of the exercise to update.
         exercise_edit (ExerciseEditRequest): The exercise fields to update (all fields optional).
+        current_user: Authenticated user (USER or ADMIN role required).
 
     Returns:
         ExerciseResponse: The updated exercise details.
@@ -365,13 +374,19 @@ def edit_exercise_endpoint(
     return exercise
 
 
-@app.delete('/exercises/{exercise_id}', status_code=204)
+@app.delete('/exercises/{exercise_id}', status_code=204, tags=["Exercises"])
 @limiter.limit("60/minute")  # User-level write limit
-def delete_exercise_endpoint(request: Request, exercise_id: int, repository: RepositoryDep) -> None:
-    """Delete a specific exercise from the database.
+def delete_exercise_endpoint(
+    request: Request,
+    exercise_id: int,
+    repository: RepositoryDep,
+    current_user: Annotated[User, Depends(require_user_or_admin)]
+) -> None:
+    """Delete a specific exercise from the database (requires authentication).
 
     Args:
         exercise_id (int): The unique identifier of the exercise to delete.
+        current_user: Authenticated user (USER or ADMIN role required).
 
     Returns:
         None: No content on successful deletion.

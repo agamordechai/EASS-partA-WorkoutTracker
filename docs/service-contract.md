@@ -159,8 +159,9 @@ Rate-limited: public limit (100/min). No auth.
 
 ### 3.4 Exercise CRUD
 
-All exercise endpoints are **unauthenticated** (no `Depends(get_current_active_user)`)
-but are rate-limited.
+**Read endpoints** (`GET`) are **unauthenticated** for public access.
+**Write endpoints** (`POST`, `PATCH`, `DELETE`) require a valid Bearer token with USER or ADMIN role.
+All endpoints are rate-limited.
 
 #### List exercises
 
@@ -895,7 +896,10 @@ The probe script (`scripts/mcp_probe.py`) demonstrates all tools and provides ve
 
 | # | Location | Description |
 |---|---|---|
-| 1 | `services/worker/src/tasks/cache_warmup.py:55` | The warmup task POSTs to `/generate` on the AI Coach, but AI Coach exposes no `/generate` endpoint. Every warmup iteration will receive a 404 or 405, meaning the daily cache-warmup task currently has a 0 % success rate. The intended target is likely `POST /recommend`. |
-| 2 | `services/api/src/auth.py:14` | `SECRET_KEY` is a plaintext constant. It must be loaded from an environment variable or secret manager before any production deployment. |
-| 3 | `services/ai_coach/src/api.py:105` | The AI Coach health endpoint always returns `"status": "healthy"` regardless of whether its upstream dependencies are actually reachable. The per-dependency booleans are accurate but the top-level status does not reflect them. |
-| 4 | Auth scope | Exercise CRUD endpoints (`/exercises/*`) have no authentication guard — any caller (including unauthenticated) can create, edit, and delete exercises. Only the `/admin/*` routes and `/auth/me` require a token. |
+| 1 | `services/ai_coach/src/api.py:105` | The AI Coach health endpoint always returns `"status": "healthy"` regardless of whether its upstream dependencies are actually reachable. The per-dependency booleans are accurate but the top-level status does not reflect them. |
+
+### Recently resolved
+
+- ✅ **Worker warmup endpoint** — Now correctly POSTs to `/recommend` instead of `/generate`
+- ✅ **SECRET_KEY** — Now loaded from `JWT_SECRET_KEY` environment variable
+- ✅ **Exercise CRUD auth** — POST, PATCH, DELETE now require USER or ADMIN role authentication (GET remains public for read access)

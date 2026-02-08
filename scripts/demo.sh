@@ -79,7 +79,7 @@ echo "  2. Verify health of all services"
 echo "  3. Demonstrate the REST API"
 echo "  4. Show authentication flow"
 echo "  5. Demonstrate the AI Coach"
-echo "  6. Open the Streamlit dashboard"
+echo "  6. Open the React frontend"
 echo ""
 
 # Check if Docker is running

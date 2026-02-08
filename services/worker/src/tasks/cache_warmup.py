@@ -51,13 +51,13 @@ async def warmup_ai_cache(ctx: dict[str, Any]) -> dict[str, int]:
         for equipment in equipment_combos:
             for duration in durations:
                 try:
-                    # Make request to AI Coach
+                    # Make request to AI Coach /recommend endpoint
                     response = await client.post(
-                        "/generate",
+                        "/recommend",
                         json={
-                            "muscle_group": muscle,
-                            "equipment": equipment,
-                            "duration_minutes": duration,
+                            "focus_area": muscle,
+                            "equipment_available": equipment,
+                            "session_duration_minutes": duration,
                         },
                     )
                     response.raise_for_status()
