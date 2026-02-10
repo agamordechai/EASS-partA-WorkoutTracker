@@ -2,7 +2,6 @@
 
 import httpx
 import logging
-from typing import List, Optional
 
 from services.ai_coach.src.config import get_settings
 from services.ai_coach.src.models import ExerciseFromAPI, WorkoutContext
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 class WorkoutAPIClient:
     """Client for the Workout Tracker API."""
 
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 10.0):
+    def __init__(self, base_url: str | None = None, timeout: float = 10.0):
         """Initialize the API client.
 
         Args:
@@ -23,7 +22,7 @@ class WorkoutAPIClient:
         settings = get_settings()
         self.base_url = base_url or settings.workout_api_url
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -53,7 +52,7 @@ class WorkoutAPIClient:
             logger.warning(f"Workout API health check failed: {e}")
             return False
 
-    async def get_exercises(self) -> List[ExerciseFromAPI]:
+    async def get_exercises(self) -> list[ExerciseFromAPI]:
         """Fetch all exercises from the Workout API.
 
         Returns:
@@ -100,7 +99,7 @@ class WorkoutAPIClient:
             muscle_groups_worked=muscle_groups
         )
 
-    def _identify_muscle_groups(self, exercises: List[ExerciseFromAPI]) -> List[str]:
+    def _identify_muscle_groups(self, exercises: list[ExerciseFromAPI]) -> list[str]:
         """Identify muscle groups from exercise names.
 
         Args:
@@ -130,7 +129,7 @@ class WorkoutAPIClient:
 
 
 # Global client instance
-_workout_client: Optional[WorkoutAPIClient] = None
+_workout_client: WorkoutAPIClient | None = None
 
 
 def get_workout_client() -> WorkoutAPIClient:

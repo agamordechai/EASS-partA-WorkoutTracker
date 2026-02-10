@@ -3,7 +3,7 @@
 This module provides database connection handling using SQLModel.
 Supports both PostgreSQL and SQLite based on configuration.
 """
-from typing import Generator
+from collections.abc import Generator
 from sqlmodel import create_engine, Session, SQLModel
 from services.api.src.database.config import get_settings
 

@@ -7,12 +7,12 @@ Based on Session 12 requirements for tool-friendly APIs.
 """
 import hashlib
 import json
-from typing import Any, Dict
+from typing import Any
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
 
-def compute_etag(body: Dict[str, Any]) -> str:
+def compute_etag(body: dict[str, Any]) -> str:
     """Compute an ETag hash for a response payload.
 
     The ETag is a weak validator (prefixed with W/) computed from the
@@ -22,7 +22,7 @@ def compute_etag(body: Dict[str, Any]) -> str:
         body: The response payload dictionary to hash
 
     Returns:
-        str: ETag string in format W/"<hash>" (e.g., W/"a3f5b2c8...")
+        ETag string in format W/"<hash>" (e.g., W/"a3f5b2c8...").
 
     Example:
         >>> compute_etag({"page": 1, "items": [{"id": 1}]})
@@ -37,7 +37,7 @@ def compute_etag(body: Dict[str, Any]) -> str:
 def maybe_return_not_modified(
     request: Request,
     response: Response,
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 ) -> Response:
     """Check If-None-Match header and return 304 if ETag matches.
 
@@ -53,8 +53,8 @@ def maybe_return_not_modified(
         payload: The response payload dictionary
 
     Returns:
-        Response: Either a 304 Not Modified response or the original response
-                  with ETag header added
+        Either a 304 Not Modified response or the original response
+        with ETag header added.
 
     Example:
         First request:
@@ -87,7 +87,7 @@ def maybe_return_not_modified(
     return response
 
 
-def add_etag_header(response: JSONResponse, payload: Dict[str, Any]) -> JSONResponse:
+def add_etag_header(response: JSONResponse, payload: dict[str, Any]) -> JSONResponse:
     """Add ETag header to a JSONResponse.
 
     Convenience function for adding ETag without If-None-Match checking.
@@ -98,7 +98,7 @@ def add_etag_header(response: JSONResponse, payload: Dict[str, Any]) -> JSONResp
         payload: The response payload dictionary
 
     Returns:
-        JSONResponse: The same response with ETag header added
+        The same response with ETag header added.
     """
     etag = compute_etag(payload)
     response.headers["ETag"] = etag

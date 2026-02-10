@@ -11,13 +11,14 @@ Usage:
     uv run python scripts/refresh.py
     uv run python scripts/refresh.py --concurrency 5 --api-url http://localhost:8000
 """
+from __future__ import annotations
+
 import asyncio
 import argparse
 import logging
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 import httpx
 
@@ -61,7 +62,7 @@ class RefreshResult:
 class IdempotencyStore:
     """Redis-backed idempotency store to prevent duplicate processing."""
 
-    def __init__(self, redis_client: Optional["redis.Redis"], ttl: int = 3600):
+    def __init__(self, redis_client: redis.Redis | None, ttl: int = 3600):
         """Initialize the idempotency store.
 
         Args:
@@ -165,9 +166,9 @@ class ExerciseRefresher:
         """
         self.config = config
         self.semaphore = asyncio.Semaphore(config.max_concurrency)
-        self.http_client: Optional[httpx.AsyncClient] = None
-        self.redis_client: Optional["redis.Redis"] = None
-        self.idempotency: Optional[IdempotencyStore] = None
+        self.http_client: httpx.AsyncClient | None = None
+        self.redis_client: redis.Redis | None = None
+        self.idempotency: IdempotencyStore | None = None
 
         # Stats
         self.processed = 0

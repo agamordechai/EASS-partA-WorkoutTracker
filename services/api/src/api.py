@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from contextlib import asynccontextmanager
-from typing import List, AsyncGenerator, Literal
+from typing import AsyncGenerator, Literal
 from datetime import datetime, timezone, timedelta
 import csv
 from io import StringIO
@@ -72,10 +72,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Logs configuration information on startup and cleanup on shutdown.
 
     Args:
-        app (FastAPI): The FastAPI application instance.
+        app: The FastAPI application instance.
 
     Yields:
-        None: Control is yielded to the application during its runtime.
+        Control is yielded to the application during its runtime.
     """
     # Startup
     logger.info(f"Starting Workout Tracker API v{settings.api.version}")
@@ -140,11 +140,11 @@ async def request_logging_middleware(
     each request with a unique trace ID and calculating response time.
 
     Args:
-        request (Request): The incoming HTTP request object.
-        call_next (RequestResponseEndpoint): The next middleware or route handler in the chain.
+        request: The incoming HTTP request object.
+        call_next: The next middleware or route handler in the chain.
 
     Returns:
-        Response: The HTTP response with X-Request-Id and X-Response-Time headers added.
+        The HTTP response with X-Request-Id and X-Response-Time headers added.
     """
     # Generate or use existing trace ID
     trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4())[:8])
@@ -180,7 +180,7 @@ def read_root(request: Request) -> dict[str, str]:
     """Get the root endpoint welcome message.
 
     Returns:
-        dict[str, str]: A dictionary containing a welcome message and configuration info.
+        A dictionary containing a welcome message and configuration info.
     """
     return {
         'message': 'Welcome to the Workout Tracker API',
@@ -194,7 +194,7 @@ def health_check() -> HealthResponse:
     """Health check endpoint for monitoring and container orchestration.
 
     Returns:
-        HealthResponse: Health status including service info and database connectivity.
+        Health status including service info and database connectivity.
     """
     db_healthy = True
     db_message = "Connected"
@@ -292,10 +292,10 @@ def read_exercise(request: Request, exercise_id: int, repository: RepositoryDep)
     """Get a specific exercise by ID.
 
     Args:
-        exercise_id (int): The unique identifier of the exercise to retrieve.
+        exercise_id: The unique identifier of the exercise to retrieve.
 
     Returns:
-        ExerciseResponse: The exercise details if found.
+        The exercise details if found.
 
     Raises:
         HTTPException: 404 error if the exercise is not found.
@@ -313,14 +313,13 @@ def add_exercise(
     exercise: Exercise,
     repository: RepositoryDep,
 ) -> ExerciseResponse:
-    """Create a new exercise in the database (requires authentication).
+    """Create a new exercise in the database.
 
     Args:
-        exercise (Exercise): The exercise data including name, sets, reps, optional weight, and workout_day.
-        current_user: Authenticated user (USER or ADMIN role required).
+        exercise: The exercise data including name, sets, reps, optional weight, and workout_day.
 
     Returns:
-        ExerciseResponse: The newly created exercise with its assigned ID.
+        The newly created exercise with its assigned ID.
     """
     return repository.create(
         name=exercise.name,
@@ -339,15 +338,14 @@ def edit_exercise_endpoint(
     exercise_edit: ExerciseEditRequest,
     repository: RepositoryDep,
 ) -> ExerciseResponse:
-    """Update any attributes of a specific exercise (requires authentication).
+    """Update any attributes of a specific exercise.
 
     Args:
-        exercise_id (int): The unique identifier of the exercise to update.
-        exercise_edit (ExerciseEditRequest): The exercise fields to update (all fields optional).
-        current_user: Authenticated user (USER or ADMIN role required).
+        exercise_id: The unique identifier of the exercise to update.
+        exercise_edit: The exercise fields to update (all fields optional).
 
     Returns:
-        ExerciseResponse: The updated exercise details.
+        The updated exercise details.
 
     Raises:
         HTTPException: 404 error if the exercise is not found.
@@ -378,14 +376,10 @@ def delete_exercise_endpoint(
     exercise_id: int,
     repository: RepositoryDep,
 ) -> None:
-    """Delete a specific exercise from the database (requires authentication).
+    """Delete a specific exercise from the database.
 
     Args:
-        exercise_id (int): The unique identifier of the exercise to delete.
-        current_user: Authenticated user (USER or ADMIN role required).
-
-    Returns:
-        None: No content on successful deletion.
+        exercise_id: The unique identifier of the exercise to delete.
 
     Raises:
         HTTPException: 404 error if the exercise is not found.
@@ -404,13 +398,13 @@ def login(request: Request, login_request: LoginRequest) -> Token:
     """Authenticate user and return JWT tokens.
 
     Args:
-        login_request: Username and password
+        login_request: Username and password.
 
     Returns:
-        Token: Access and refresh tokens
+        Access and refresh tokens.
 
     Raises:
-        HTTPException: 401 if credentials are invalid
+        HTTPException: 401 if credentials are invalid.
     """
     user = authenticate_user(login_request.username, login_request.password)
     if not user:
@@ -443,10 +437,10 @@ async def get_me(
     """Get current authenticated user info.
 
     Args:
-        current_user: Current user from JWT token
+        current_user: Current user from JWT token.
 
     Returns:
-        User: Current user details
+        Current user details.
     """
     return current_user
 
@@ -460,10 +454,10 @@ async def list_users(
     """List all users (admin only).
 
     Args:
-        current_user: Current admin user
+        current_user: Current admin user.
 
     Returns:
-        List of users (without passwords)
+        List of users (without passwords).
     """
     return [
         {
@@ -487,11 +481,11 @@ async def admin_delete_exercise(
     """Delete exercise (admin only, protected route).
 
     Args:
-        exercise_id: ID of exercise to delete
-        current_user: Current admin user
+        exercise_id: ID of exercise to delete.
+        current_user: Current admin user.
 
     Raises:
-        HTTPException: 404 if exercise not found
+        HTTPException: 404 if exercise not found.
     """
     success = repository.delete(exercise_id)
     if not success:

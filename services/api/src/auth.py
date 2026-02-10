@@ -1,7 +1,7 @@
 """Authentication and authorization module for Workout Tracker API."""
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Annotated
+from typing import Annotated
 from enum import Enum
 import bcrypt
 
@@ -30,7 +30,7 @@ class Role(str, Enum):
 class User(BaseModel):
     """User model."""
     username: str
-    email: Optional[str] = None
+    email: str | None = None
     role: Role = Role.USER
     disabled: bool = False
 
@@ -45,7 +45,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = Field(..., description="Token expiration in seconds")
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
 
 
 class TokenData(BaseModel):
@@ -65,7 +65,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     """Registration request model."""
     username: str = Field(..., min_length=3, max_length=50)
-    email: Optional[str] = None
+    email: str | None = None
     password: str = Field(..., min_length=6)
     role: Role = Role.USER
 
@@ -153,7 +153,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def get_user(username: str) -> Optional[UserInDB]:
+def get_user(username: str) -> UserInDB | None:
     """Get user from database.
 
     Args:
@@ -165,7 +165,7 @@ def get_user(username: str) -> Optional[UserInDB]:
     return USERS_DB.get(username)
 
 
-def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
+def authenticate_user(username: str, password: str) -> UserInDB | None:
     """Authenticate a user with username and password.
 
     Args:
@@ -185,7 +185,7 @@ def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
 
 def create_access_token(
     data: dict,
-    expires_delta: Optional[timedelta] = None,
+    expires_delta: timedelta | None = None,
     secret_key: str = SECRET_KEY
 ) -> str:
     """Create a JWT access token.
@@ -234,7 +234,7 @@ def create_refresh_token(
 def decode_token(
     token: str,
     secret_key: str = SECRET_KEY
-) -> Optional[dict]:
+) -> dict | None:
     """Decode and verify a JWT token.
 
     Args:
@@ -254,7 +254,7 @@ def decode_token(
 
 
 async def get_current_user(
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)]
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)]
 ) -> User:
     """Dependency to get the current authenticated user.
 

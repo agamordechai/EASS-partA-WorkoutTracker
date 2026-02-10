@@ -19,7 +19,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich import print as rprint
@@ -178,8 +177,8 @@ def reset(
 @app.command()
 def export(
     format: str = typer.Option("csv", "--format", "-f", help="Export format: csv or json"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
-    workout_day: Optional[str] = typer.Option(None, "--day", "-d", help="Filter by workout day"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),
+    workout_day: str | None = typer.Option(None, "--day", "-d", help="Filter by workout day"),
 ) -> None:
     """Export exercises to CSV or JSON format.
 
@@ -350,7 +349,7 @@ def stats() -> None:
 
 @app.command()
 def list(
-    day: Optional[str] = typer.Option(None, "--day", "-d", help="Filter by workout day"),
+    day: str | None = typer.Option(None, "--day", "-d", help="Filter by workout day"),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum number to display"),
 ) -> None:
     """List exercises in a formatted table.

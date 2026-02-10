@@ -4,7 +4,7 @@ Uses pytest fixtures for test isolation with a separate test database.
 """
 import pytest
 import os
-from typing import Generator
+from collections.abc import Generator
 from fastapi.testclient import TestClient
 from services.api.src.api import app, limiter
 
@@ -20,7 +20,7 @@ def test_db() -> Generator[None, None, None]:
     ensuring tests don't interfere with each other or the production database.
 
     Yields:
-        None: The fixture sets up the test database environment and cleans up after.
+        The fixture sets up the test database environment and cleans up after.
     """
     # Use a test-specific database
     test_db_path = 'test_workout_tracker.db'
@@ -71,7 +71,7 @@ def test_read_root(client: TestClient) -> None:
     """Test the root endpoint.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.get('/')
     assert response.status_code == 200
@@ -84,7 +84,7 @@ def test_read_exercises(client: TestClient) -> None:
     """Test getting all exercises with pagination.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.get('/exercises')
     assert response.status_code == 200
@@ -112,7 +112,7 @@ def test_read_exercise_by_id(client: TestClient, auth_headers: dict[str, str]) -
     """Test getting a specific exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     # First create an exercise to ensure one exists
@@ -135,7 +135,7 @@ def test_read_exercise_not_found(client: TestClient) -> None:
     """Test getting a non-existent exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.get('/exercises/9999')
     assert response.status_code == 404
@@ -146,7 +146,7 @@ def test_create_exercise(client: TestClient, auth_headers: dict[str, str]) -> No
     """Test creating a new exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     new_exercise = {
@@ -169,7 +169,7 @@ def test_create_exercise_validation_error(client: TestClient, auth_headers: dict
     """Test creating an exercise with invalid data.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     invalid_exercise = {
@@ -185,7 +185,7 @@ def test_edit_exercise(client: TestClient, auth_headers: dict[str, str]) -> None
     """Test updating an exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     # First create an exercise to update
@@ -212,7 +212,7 @@ def test_edit_exercise_not_found(client: TestClient, auth_headers: dict[str, str
     """Test updating a non-existent exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     update_data = {'sets': 5}
@@ -224,7 +224,7 @@ def test_delete_exercise(client: TestClient, auth_headers: dict[str, str]) -> No
     """Test deleting an exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     new_exercise = {
@@ -246,7 +246,7 @@ def test_delete_exercise_not_found(client: TestClient, auth_headers: dict[str, s
     """Test deleting a non-existent exercise.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     response = client.delete('/exercises/9999', headers=auth_headers)
@@ -257,7 +257,7 @@ def test_health_check(client: TestClient) -> None:
     """Test the health check endpoint.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.get('/health')
     assert response.status_code == 200
@@ -273,7 +273,7 @@ def test_create_exercise_invalid_name_empty(client: TestClient, auth_headers: di
     """Test creating an exercise with empty name fails validation.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     invalid_exercise = {
@@ -289,7 +289,7 @@ def test_create_exercise_invalid_sets_zero(client: TestClient, auth_headers: dic
     """Test creating an exercise with zero sets fails validation.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     invalid_exercise = {
@@ -305,7 +305,7 @@ def test_create_exercise_invalid_negative_weight(client: TestClient, auth_header
     """Test creating an exercise with negative weight fails validation.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     invalid_exercise = {
@@ -324,7 +324,7 @@ def test_create_exercise_with_workout_day(client: TestClient, auth_headers: dict
     """Test creating an exercise with a specific workout day.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     new_exercise = {
@@ -344,7 +344,7 @@ def test_create_exercise_default_workout_day(client: TestClient, auth_headers: d
     """Test that exercises get default workout day when not specified.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     new_exercise = {
@@ -363,7 +363,7 @@ def test_create_exercise_with_different_workout_days(client: TestClient, auth_he
     """Test creating exercises with different workout days (A-G split).
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     workout_days = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
@@ -385,7 +385,7 @@ def test_create_exercise_with_none_workout_day(client: TestClient, auth_headers:
     """Test creating a daily exercise (workout_day = 'None').
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     new_exercise = {
@@ -404,7 +404,7 @@ def test_update_exercise_workout_day(client: TestClient, auth_headers: dict[str,
     """Test updating an exercise's workout day.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     # Create exercise on day A
@@ -432,7 +432,7 @@ def test_exercise_response_includes_workout_day(client: TestClient, auth_headers
     """Test that exercise list includes workout_day field.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     # First create an exercise to ensure we have data
@@ -461,7 +461,7 @@ def test_get_single_exercise_includes_workout_day(client: TestClient, auth_heade
     """Test that getting a single exercise includes workout_day.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
         auth_headers: Authorization headers for authenticated requests.
     """
     # Create exercise with specific day
@@ -487,7 +487,7 @@ def test_create_exercise_requires_auth(client: TestClient) -> None:
     """Test that creating an exercise requires authentication.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     new_exercise = {
         'name': 'Unauthorized Exercise',
@@ -502,7 +502,7 @@ def test_update_exercise_requires_auth(client: TestClient) -> None:
     """Test that updating an exercise requires authentication.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.patch('/exercises/1', json={'sets': 5})
     assert response.status_code == 401
@@ -512,7 +512,7 @@ def test_delete_exercise_requires_auth(client: TestClient) -> None:
     """Test that deleting an exercise requires authentication.
 
     Args:
-        client (TestClient): The test client fixture.
+        client: The test client fixture.
     """
     response = client.delete('/exercises/1')
     assert response.status_code == 401

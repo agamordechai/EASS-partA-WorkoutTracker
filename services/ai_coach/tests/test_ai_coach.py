@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, patch, MagicMock
 # Import models directly without triggering pydantic-ai imports
 import sys
 from pydantic import BaseModel, Field
-from typing import Optional, List
 from enum import Enum
 
 
@@ -26,40 +25,40 @@ class ExerciseFromAPI(BaseModel):
     name: str
     sets: int
     reps: int
-    weight: Optional[float] = None
+    weight: float | None = None
 
 
 class WorkoutContext(BaseModel):
-    exercises: List[ExerciseFromAPI] = Field(default_factory=list)
+    exercises: list[ExerciseFromAPI] = Field(default_factory=list)
     total_volume: float = Field(default=0.0)
     exercise_count: int = Field(default=0)
-    muscle_groups_worked: List[str] = Field(default_factory=list)
+    muscle_groups_worked: list[str] = Field(default_factory=list)
 
 
 class ExerciseRecommendation(BaseModel):
     name: str
     sets: int
     reps: str
-    weight_suggestion: Optional[str] = None
-    notes: Optional[str] = None
+    weight_suggestion: str | None = None
+    notes: str | None = None
     muscle_group: MuscleGroup
 
 
 class WorkoutRecommendation(BaseModel):
     title: str
     description: str
-    exercises: List[ExerciseRecommendation]
+    exercises: list[ExerciseRecommendation]
     estimated_duration_minutes: int
     difficulty: str
-    tips: List[str] = Field(default_factory=list)
+    tips: list[str] = Field(default_factory=list)
 
 
 class ProgressAnalysis(BaseModel):
     summary: str
-    strengths: List[str] = Field(default_factory=list)
-    areas_to_improve: List[str] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
-    muscle_balance_score: Optional[float] = None
+    strengths: list[str] = Field(default_factory=list)
+    areas_to_improve: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    muscle_balance_score: float | None = None
 
 
 @pytest.fixture

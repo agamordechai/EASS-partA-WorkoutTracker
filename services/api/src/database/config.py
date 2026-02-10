@@ -1,7 +1,7 @@
 """Configuration settings for the Workout Tracker API."""
 import os
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,7 +20,7 @@ class DatabaseSettings(BaseSettings):
         timeout: Database connection timeout in seconds
     """
 
-    url: Optional[str] = Field(
+    url: str | None = Field(
         default=None,
         description="PostgreSQL database URL (overrides path if set)"
     )
@@ -129,11 +129,11 @@ class APISettings(BaseSettings):
         default="0.1.0",
         description="API version"
     )
-    docs_url: Optional[str] = Field(
+    docs_url: str | None = Field(
         default="/docs",
         description="URL path for API documentation"
     )
-    openapi_url: Optional[str] = Field(
+    openapi_url: str | None = Field(
         default="/openapi.json",
         description="URL path for OpenAPI schema"
     )
@@ -161,8 +161,8 @@ class AppSettings(BaseSettings):
     """
 
     # Nested configuration sections
-    db: Optional[DatabaseSettings] = None
-    api: Optional[APISettings] = None
+    db: DatabaseSettings | None = None
+    api: APISettings | None = None
 
     def __init__(self, **data) -> None:
         """Initialize settings and ensure nested settings use the same env file.
@@ -224,7 +224,7 @@ class AppSettings(BaseSettings):
 
 
 # Singleton instance of settings
-_settings: Optional[AppSettings] = None
+_settings: AppSettings | None = None
 
 
 def get_settings() -> AppSettings:

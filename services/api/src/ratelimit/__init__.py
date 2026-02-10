@@ -1,6 +1,5 @@
 """Rate limiting module for Workout Tracker API."""
 import logging
-from typing import Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -13,17 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 def get_rate_limit_key(request: Request) -> str:
-    """
-    Get the rate limit key for a request.
+    """Get the rate limit key for a request.
 
     For authenticated requests: user:{username}:{role}
     For anonymous requests: ip:{client_ip}
 
     Args:
-        request: The FastAPI request object
+        request: The FastAPI request object.
 
     Returns:
-        Rate limit key string
+        Rate limit key string.
     """
     # Try to extract JWT token from Authorization header
     auth_header = request.headers.get("Authorization", "")
@@ -53,15 +51,14 @@ def get_rate_limit_key(request: Request) -> str:
 
 
 def get_rate_limit_for_request(request: Request, key: str) -> str:
-    """
-    Get the appropriate rate limit for a request based on role and endpoint.
+    """Get the appropriate rate limit for a request based on role and endpoint.
 
     Args:
-        request: The FastAPI request object
-        key: The rate limit key (from get_rate_limit_key)
+        request: The FastAPI request object.
+        key: The rate limit key (from get_rate_limit_key).
 
     Returns:
-        Rate limit string (e.g., "120/minute")
+        Rate limit string (e.g., "120/minute").
     """
     settings = get_ratelimit_settings()
 
@@ -111,15 +108,14 @@ def get_rate_limit_for_request(request: Request, key: str) -> str:
 
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
-    """
-    Custom handler for rate limit exceeded errors.
+    """Custom handler for rate limit exceeded errors.
 
     Args:
-        request: The FastAPI request object
-        exc: The RateLimitExceeded exception
+        request: The FastAPI request object.
+        exc: The RateLimitExceeded exception.
 
     Returns:
-        JSONResponse with 429 status code
+        JSONResponse with 429 status code.
     """
     # Extract retry_after from exception if available
     retry_after = getattr(exc, "retry_after", 60)

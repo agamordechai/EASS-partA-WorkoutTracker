@@ -1,7 +1,6 @@
 """Configuration settings for the AI Coach service."""
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -42,7 +41,7 @@ class Settings(BaseSettings):
     ai_temperature: float = Field(default=0.7, alias="AI_TEMPERATURE")
 
     # Anthropic API key
-    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
 
     # Workout API
     workout_api_url: str = Field(default="http://api:8000", alias="WORKOUT_API_URL")

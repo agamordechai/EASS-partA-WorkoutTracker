@@ -5,18 +5,17 @@ consistent data representation and validation.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class ExerciseBase(BaseModel):
     """Base exercise model with common fields.
 
     Attributes:
-        name (str): The name of the exercise (1-100 characters).
-        sets (int): The number of sets to perform (1-100).
-        reps (int): The number of repetitions per set (1-1000).
-        weight (Optional[float]): The weight used in kg (optional, >= 0).
-        workout_day (str): The workout day identifier (e.g., A, B, C for splits).
+        name: The name of the exercise (1-100 characters).
+        sets: The number of sets to perform (1-100).
+        reps: The number of repetitions per set (1-1000).
+        weight: The weight used in kg (optional, >= 0).
+        workout_day: The workout day identifier (e.g., A, B, C for splits).
     """
     name: str = Field(
         ...,
@@ -39,7 +38,7 @@ class ExerciseBase(BaseModel):
         description="Number of repetitions per set",
         examples=[8, 10, 12]
     )
-    weight: Optional[float] = Field(
+    weight: float | None = Field(
         default=None,
         ge=0,
         description="Weight in kg (None for bodyweight exercises)",
@@ -68,7 +67,7 @@ class ExerciseResponse(ExerciseBase):
     Extends ExerciseBase with database-specific fields like ID and timestamps.
 
     Attributes:
-        id (int): The unique identifier of the exercise.
+        id: The unique identifier of the exercise.
     """
     id: int = Field(..., ge=1, description="Unique identifier of the exercise")
 
@@ -81,36 +80,36 @@ class ExerciseEditRequest(BaseModel):
     All attributes are optional to allow partial updates of exercise data.
 
     Attributes:
-        name (Optional[str]): The new name for the exercise (1-100 characters).
-        sets (Optional[int]): The new number of sets (1-100).
-        reps (Optional[int]): The new number of repetitions (1-1000).
-        weight (Optional[float]): The new weight value in kg (>= 0, or None for bodyweight).
-        workout_day (Optional[str]): The workout day identifier (A, B, C, etc.).
+        name: The new name for the exercise (1-100 characters).
+        sets: The new number of sets (1-100).
+        reps: The new number of repetitions (1-1000).
+        weight: The new weight value in kg (>= 0, or None for bodyweight).
+        workout_day: The workout day identifier (A, B, C, etc.).
     """
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None,
         min_length=1,
         max_length=100,
         description="New name for the exercise"
     )
-    sets: Optional[int] = Field(
+    sets: int | None = Field(
         default=None,
         ge=1,
         le=100,
         description="New number of sets"
     )
-    reps: Optional[int] = Field(
+    reps: int | None = Field(
         default=None,
         ge=1,
         le=1000,
         description="New number of reps"
     )
-    weight: Optional[float] = Field(
+    weight: float | None = Field(
         default=None,
         ge=0,
         description="New weight in kg (None for bodyweight)"
     )
-    workout_day: Optional[str] = Field(
+    workout_day: str | None = Field(
         default=None,
         min_length=1,
         max_length=10,

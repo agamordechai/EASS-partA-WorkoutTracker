@@ -26,6 +26,7 @@ _settings = None
 
 
 def get_ratelimit_settings() -> RateLimitSettings:
+    """Get cached rate limit settings instance."""
     global _settings
     if _settings is None:
         _settings = RateLimitSettings()

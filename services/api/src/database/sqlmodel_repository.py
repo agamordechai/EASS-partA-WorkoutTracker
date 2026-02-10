@@ -3,7 +3,7 @@
 Provides CRUD operations for exercises using SQLModel ORM.
 This replaces the raw SQL implementation with proper ORM patterns.
 """
-from typing import List, Optional
+from __future__ import annotations
 from sqlmodel import Session, select
 from sqlalchemy import func
 
@@ -29,11 +29,11 @@ class ExerciseRepository:
         """
         self.session = session
 
-    def get_all(self) -> List[ExerciseResponse]:
+    def get_all(self) -> list[ExerciseResponse]:
         """Retrieve all exercises from the database.
 
         Returns:
-            List[ExerciseResponse]: List of all exercises
+            List of all exercises.
         """
         statement = select(ExerciseTable)
         results = self.session.exec(statement).all()
@@ -55,7 +55,7 @@ class ExerciseRepository:
             sort_order: 'asc' or 'desc'
 
         Returns:
-            Tuple of (exercises for the page, total count)
+            Tuple of exercises for the page and total count.
         """
         total = self.session.execute(
             select(func.count()).select_from(ExerciseTable)
@@ -73,14 +73,14 @@ class ExerciseRepository:
         items = [ExerciseResponse.model_validate(ex.model_dump()) for ex in results]
         return items, total
 
-    def get_by_id(self, exercise_id: int) -> Optional[ExerciseResponse]:
+    def get_by_id(self, exercise_id: int) -> ExerciseResponse | None:
         """Retrieve a specific exercise by ID.
 
         Args:
             exercise_id: The unique identifier of the exercise
 
         Returns:
-            ExerciseResponse if found, None otherwise
+            The exercise if found, None otherwise.
         """
         exercise = self.session.get(ExerciseTable, exercise_id)
         if exercise:
@@ -92,7 +92,7 @@ class ExerciseRepository:
         name: str,
         sets: int,
         reps: int,
-        weight: Optional[float] = None,
+        weight: float | None = None,
         workout_day: str = 'A'
     ) -> ExerciseResponse:
         """Create a new exercise in the database.
@@ -105,7 +105,7 @@ class ExerciseRepository:
             workout_day: Workout day identifier (A-G or 'None')
 
         Returns:
-            ExerciseResponse: The newly created exercise with ID
+            The newly created exercise with ID.
         """
         exercise = ExerciseTable(
             name=name,
@@ -122,13 +122,13 @@ class ExerciseRepository:
     def update(
         self,
         exercise_id: int,
-        name: Optional[str] = None,
-        sets: Optional[int] = None,
-        reps: Optional[int] = None,
-        weight: Optional[float] = None,
+        name: str | None = None,
+        sets: int | None = None,
+        reps: int | None = None,
+        weight: float | None = None,
         update_weight: bool = False,
-        workout_day: Optional[str] = None
-    ) -> Optional[ExerciseResponse]:
+        workout_day: str | None = None
+    ) -> ExerciseResponse | None:
         """Update an existing exercise.
 
         Args:
@@ -141,7 +141,7 @@ class ExerciseRepository:
             workout_day: New workout day (optional)
 
         Returns:
-            ExerciseResponse if found and updated, None otherwise
+            The updated exercise if found, None otherwise.
         """
         exercise = self.session.get(ExerciseTable, exercise_id)
         if not exercise:

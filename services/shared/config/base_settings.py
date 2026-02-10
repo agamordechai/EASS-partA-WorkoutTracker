@@ -1,7 +1,6 @@
 """Base configuration utilities for all services."""
 
 from enum import Enum
-from typing import Optional
 
 
 class LogLevel(str, Enum):
@@ -17,7 +16,7 @@ def build_redis_url(
     host: str = "localhost",
     port: int = 6379,
     db: int = 0,
-    password: Optional[str] = None
+    password: str | None = None
 ) -> str:
     """Build a Redis connection URL.
 

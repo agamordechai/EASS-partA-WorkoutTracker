@@ -1,6 +1,5 @@
 """Pydantic models for the AI Coach service."""
 from pydantic import BaseModel, Field
-from typing import Optional, List
 from enum import Enum
 
 # Import shared Exercise models
@@ -24,10 +23,10 @@ class MuscleGroup(str, Enum):
 
 class WorkoutContext(BaseModel):
     """Context for AI recommendations based on current workout data."""
-    exercises: List[ExerciseFromAPI] = Field(default_factory=list)
+    exercises: list[ExerciseFromAPI] = Field(default_factory=list)
     total_volume: float = Field(default=0.0, description="Total workout volume in kg")
     exercise_count: int = Field(default=0, description="Total number of exercises")
-    muscle_groups_worked: List[str] = Field(default_factory=list)
+    muscle_groups_worked: list[str] = Field(default_factory=list)
 
 
 class ChatMessage(BaseModel):
@@ -50,8 +49,8 @@ class ChatResponse(BaseModel):
 
 class RecommendationRequest(BaseModel):
     """Request for workout recommendations."""
-    focus_area: Optional[MuscleGroup] = Field(default=None, description="Target muscle group")
-    equipment_available: List[str] = Field(
+    focus_area: MuscleGroup | None = Field(default=None, description="Target muscle group")
+    equipment_available: list[str] = Field(
         default_factory=lambda: ["barbell", "dumbbells", "cables", "bodyweight"],
         description="Available equipment"
     )
@@ -63,8 +62,8 @@ class ExerciseRecommendation(BaseModel):
     name: str = Field(..., description="Exercise name")
     sets: int = Field(..., ge=1, le=10, description="Recommended sets")
     reps: str = Field(..., description="Recommended reps (can be range like '8-12')")
-    weight_suggestion: Optional[str] = Field(default=None, description="Weight suggestion")
-    notes: Optional[str] = Field(default=None, description="Form tips or notes")
+    weight_suggestion: str | None = Field(default=None, description="Weight suggestion")
+    notes: str | None = Field(default=None, description="Form tips or notes")
     muscle_group: MuscleGroup = Field(..., description="Primary muscle group")
 
 
@@ -72,19 +71,19 @@ class WorkoutRecommendation(BaseModel):
     """Full workout recommendation."""
     title: str = Field(..., description="Workout title")
     description: str = Field(..., description="Workout description")
-    exercises: List[ExerciseRecommendation] = Field(..., description="Recommended exercises")
+    exercises: list[ExerciseRecommendation] = Field(..., description="Recommended exercises")
     estimated_duration_minutes: int = Field(..., description="Estimated duration")
     difficulty: str = Field(..., description="Workout difficulty level")
-    tips: List[str] = Field(default_factory=list, description="General workout tips")
+    tips: list[str] = Field(default_factory=list, description="General workout tips")
 
 
 class ProgressAnalysis(BaseModel):
     """Analysis of workout progress."""
     summary: str = Field(..., description="Progress summary")
-    strengths: List[str] = Field(default_factory=list, description="Training strengths")
-    areas_to_improve: List[str] = Field(default_factory=list, description="Areas needing attention")
-    recommendations: List[str] = Field(default_factory=list, description="Actionable recommendations")
-    muscle_balance_score: Optional[float] = Field(default=None, ge=0, le=100, description="Balance score")
+    strengths: list[str] = Field(default_factory=list, description="Training strengths")
+    areas_to_improve: list[str] = Field(default_factory=list, description="Areas needing attention")
+    recommendations: list[str] = Field(default_factory=list, description="Actionable recommendations")
+    muscle_balance_score: float | None = Field(default=None, ge=0, le=100, description="Balance score")
 
 
 class HealthResponse(BaseModel):

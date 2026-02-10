@@ -6,7 +6,6 @@ making HTTP requests to other services in the workout tracker system.
 
 import httpx
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class BaseAPIClient:
         self,
         base_url: str,
         timeout: float = 10.0,
-        headers: Optional[dict] = None
+        headers: dict | None = None
     ):
         """Initialize the API client.
 
@@ -37,7 +36,7 @@ class BaseAPIClient:
         self.base_url = base_url
         self.timeout = timeout
         self.default_headers = headers or {}
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client.

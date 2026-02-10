@@ -1,6 +1,5 @@
 """AI Coach agent using Pydantic AI."""
 import logging
-from typing import Optional
 from dataclasses import dataclass
 
 from pydantic_ai import Agent
@@ -21,8 +20,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CoachDependencies:
     """Dependencies for the AI coach agent."""
-    workout_context: Optional[WorkoutContext] = None
-    focus_area: Optional[str] = None
+    workout_context: WorkoutContext | None = None
+    focus_area: str | None = None
     equipment: list[str] | None = None
     session_duration: int = 60
 
@@ -63,7 +62,14 @@ coach_agent = Agent(
 
 @coach_agent.system_prompt
 async def add_workout_context(ctx) -> str:
-    """Add workout context to the system prompt if available."""
+    """Add workout context to the system prompt if available.
+
+    Args:
+        ctx: Pydantic AI agent context containing dependencies
+
+    Returns:
+        Formatted string with workout context information
+    """
     deps: CoachDependencies = ctx.deps
 
     if deps.workout_context and deps.workout_context.exercises:
@@ -116,7 +122,7 @@ async def add_workout_context(ctx) -> str:
 
 async def chat_with_coach(
     message: str,
-    workout_context: Optional[WorkoutContext] = None
+    workout_context: WorkoutContext | None = None
 ) -> str:
     """Chat with the AI coach.
 
@@ -138,9 +144,9 @@ async def chat_with_coach(
 
 
 async def get_workout_recommendation(
-    workout_context: Optional[WorkoutContext] = None,
-    focus_area: Optional[MuscleGroup] = None,
-    equipment: Optional[list[str]] = None,
+    workout_context: WorkoutContext | None = None,
+    focus_area: MuscleGroup | None = None,
+    equipment: list[str] | None = None,
     session_duration: int = 60
 ) -> WorkoutRecommendation:
     """Get a workout recommendation from the AI coach.
@@ -233,7 +239,14 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
         # Register the workout context system prompt
         @analysis_agent.system_prompt
         async def add_analysis_workout_context(ctx) -> str:
-            """Add workout context to the analysis system prompt."""
+            """Add workout context to the analysis system prompt.
+
+            Args:
+                ctx: Pydantic AI agent context containing dependencies
+
+            Returns:
+                Formatted string with workout context information
+            """
             deps: CoachDependencies = ctx.deps
 
             if deps.workout_context and deps.workout_context.exercises:
@@ -293,10 +306,18 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
 
 
 def _get_fallback_recommendation(
-    focus_area: Optional[MuscleGroup],
+    focus_area: MuscleGroup | None,
     duration: int
 ) -> WorkoutRecommendation:
-    """Get a fallback recommendation when AI is unavailable."""
+    """Get a fallback recommendation when AI is unavailable.
+
+    Args:
+        focus_area: Target muscle group for the workout
+        duration: Workout duration in minutes
+
+    Returns:
+        A structured workout recommendation with exercises and tips
+    """
 
     exercises_by_group = {
         MuscleGroup.CHEST: [
