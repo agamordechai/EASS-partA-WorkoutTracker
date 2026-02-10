@@ -31,21 +31,19 @@ engine = create_engine(
 
 
 def init_db() -> None:
-    """Initialize database - placeholder for backward compatibility.
+    """Initialize database tables.
 
-    NOTE: Database schema is now managed by Alembic migrations.
-    To initialize or update the database schema, run:
-        cd services/api && alembic upgrade head
+    Creates all tables defined in SQLModel metadata if they don't exist.
+    This is safe to call multiple times - it only creates missing tables.
 
-    This function is kept for backward compatibility but no longer
-    performs manual table creation.
+    NOTE: For production, database schema should be managed by Alembic migrations.
+    To run migrations manually: cd services/api && alembic upgrade head
     """
     # Import all models to ensure they're registered with SQLModel metadata
     from services.api.src.database.db_models import ExerciseTable  # noqa: F401
 
-    # Manual table creation removed - use Alembic migrations instead
-    # To create tables, run: alembic upgrade head
-    pass
+    # Create all tables if they don't exist
+    SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:
