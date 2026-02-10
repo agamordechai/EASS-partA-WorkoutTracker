@@ -16,23 +16,40 @@ from services.api.src.database.database import init_db, get_session
 from services.api.src.database.sqlmodel_repository import ExerciseRepository
 
 
-def seed_exercises(count: int = 10) -> None:
+def seed_exercises(count: int = 28) -> None:
     """Seed the database with sample exercises.
 
     Args:
-        count: Number of exercises to create (max 10)
+        count: Number of exercises to create (max 28)
     """
     sample_exercises = [
-        {"name": "Bench Press", "sets": 4, "reps": 8, "weight": 80.0, "workout_day": "A"},
-        {"name": "Squat", "sets": 4, "reps": 10, "weight": 100.0, "workout_day": "B"},
-        {"name": "Deadlift", "sets": 3, "reps": 5, "weight": 120.0, "workout_day": "B"},
-        {"name": "Pull-ups", "sets": 3, "reps": 12, "weight": None, "workout_day": "C"},
-        {"name": "Overhead Press", "sets": 3, "reps": 10, "weight": 50.0, "workout_day": "A"},
-        {"name": "Barbell Row", "sets": 4, "reps": 10, "weight": 70.0, "workout_day": "C"},
-        {"name": "Dips", "sets": 3, "reps": 15, "weight": None, "workout_day": "A"},
-        {"name": "Lunges", "sets": 3, "reps": 12, "weight": 30.0, "workout_day": "B"},
-        {"name": "Push-ups", "sets": 3, "reps": 20, "weight": None, "workout_day": "A"},
-        {"name": "Bicep Curls", "sets": 3, "reps": 12, "weight": 15.0, "workout_day": "C"},
+        {"name": "Bench Press", "sets": 3, "reps": 10, "weight": 100.0, "workout_day": "A"},
+        {"name": "Shoulder Press", "sets": 3, "reps": 10, "weight": 22.5, "workout_day": "A"},
+        {"name": "Tricep curl", "sets": 3, "reps": 10, "weight": 42.5, "workout_day": "A"},
+        {"name": "Pull ups", "sets": 5, "reps": 8, "weight": None, "workout_day": "B"},
+        {"name": "Squats", "sets": 3, "reps": 8, "weight": 95.0, "workout_day": "C"},
+        {"name": "Hip Thrust", "sets": 3, "reps": 10, "weight": 100.0, "workout_day": "C"},
+        {"name": "Bulgarian Split Squat", "sets": 3, "reps": 8, "weight": 27.5, "workout_day": "C"},
+        {"name": "Hip Adduction", "sets": 3, "reps": 16, "weight": 90.0, "workout_day": "C"},
+        {"name": "Hip Abduction", "sets": 3, "reps": 16, "weight": 90.0, "workout_day": "C"},
+        {"name": "Incline Bench Press", "sets": 3, "reps": 10, "weight": 37.5, "workout_day": "A"},
+        {"name": "Chest Fly", "sets": 3, "reps": 10, "weight": 20.0, "workout_day": "A"},
+        {"name": "Upper Chest Fly", "sets": 3, "reps": 10, "weight": 20.0, "workout_day": "A"},
+        {"name": "Shoulder Extention", "sets": 5, "reps": 8, "weight": 12.5, "workout_day": "A"},
+        {"name": "Overhead Tricep curl", "sets": 3, "reps": 8, "weight": 17.5, "workout_day": "A"},
+        {"name": "Cable Row", "sets": 3, "reps": 12, "weight": 80.0, "workout_day": "B"},
+        {"name": "Pull Over", "sets": 3, "reps": 10, "weight": 45.0, "workout_day": "B"},
+        {"name": "Dumble Shrugs", "sets": 3, "reps": 12, "weight": 35.0, "workout_day": "B"},
+        {"name": "Rear Delt", "sets": 3, "reps": 10, "weight": 10.0, "workout_day": "B"},
+        {"name": "Bicep Curl", "sets": 3, "reps": 10, "weight": 35.0, "workout_day": "B"},
+        {"name": "Bicep Hammer Curls", "sets": 3, "reps": 8, "weight": 25.0, "workout_day": "B"},
+        {"name": "Knee Extention", "sets": 3, "reps": 10, "weight": 164.0, "workout_day": "C"},
+        {"name": "Knee Flexion", "sets": 3, "reps": 10, "weight": 90.0, "workout_day": "C"},
+        {"name": "Crunches", "sets": 1, "reps": 30, "weight": None, "workout_day": "None"},
+        {"name": "Penguins", "sets": 1, "reps": 25, "weight": None, "workout_day": "None"},
+        {"name": "Leg drops", "sets": 1, "reps": 25, "weight": None, "workout_day": "None"},
+        {"name": "Plank", "sets": 1, "reps": 90, "weight": None, "workout_day": "None"},
+        {"name": "Running", "sets": 1, "reps": 30, "weight": None, "workout_day": "None"},
     ]
 
     # Initialize database tables if needed
@@ -63,8 +80,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--count", "-c",
         type=int,
-        default=10,
-        help="Number of exercises to create (default: 10, max: 10)"
+        default=28,
+        help="Number of exercises to create (default: 28, max: 28)"
     )
 
     args = parser.parse_args()
