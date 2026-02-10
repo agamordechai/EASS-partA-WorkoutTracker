@@ -16,11 +16,11 @@ from services.api.src.database.database import init_db, get_session
 from services.api.src.database.sqlmodel_repository import ExerciseRepository
 
 
-def seed_exercises(count: int = 28) -> None:
+def seed_exercises(count: int = 27) -> None:
     """Seed the database with sample exercises.
 
     Args:
-        count: Number of exercises to create (max 28)
+        count: Number of exercises to create (max 27)
     """
     sample_exercises = [
         {"name": "Bench Press", "sets": 3, "reps": 10, "weight": 100.0, "workout_day": "A"},
@@ -80,8 +80,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--count", "-c",
         type=int,
-        default=28,
-        help="Number of exercises to create (default: 28, max: 28)"
+        default=27,
+        help="Number of exercises to create (default: 27, max: 27)"
     )
 
     args = parser.parse_args()

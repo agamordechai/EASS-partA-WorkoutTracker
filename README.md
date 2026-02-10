@@ -68,23 +68,29 @@ A FastAPI-based REST API for managing workout exercises with PostgreSQL persiste
 ### Option 1: Docker Compose (Recommended)
 
 ```bash
-# 1. Create .env file with your Anthropic API key
+# 1. Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Generate dependency lock file
+uv sync
+
+# 3. Create .env file with your Anthropic API key
 cp .env.example .env
 # Edit .env and add: ANTHROPIC_API_KEY=your-anthropic-key-here
 
-# 2. Start all services (database, API, AI Coach, frontend)
+# 4. Start all services (database, API, AI Coach, frontend)
 docker compose up -d
 
-# 3. Check all services are running
+# 5. Check all services are running
 docker compose ps
 
-# 4. Open frontend
+# 6. Open frontend
 open http://localhost:3000
 
-# 5. Stop all services
+# 7. Stop all services
 docker compose down
 
-# 6. Stop and remove all data (fresh start)
+# 8. Stop and remove all data (fresh start)
 docker compose down -v
 ```
 
