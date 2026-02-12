@@ -1,6 +1,6 @@
 """FastAPI application for the AI Workout Coach service."""
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -38,6 +38,11 @@ logger = logging.getLogger(__name__)
 
 # Redis client
 redis_client: redis.Redis | None = None
+
+
+def _get_auth_header(request: Request) -> str | None:
+    """Extract the Authorization header from the incoming request."""
+    return request.headers.get("Authorization")
 
 
 @asynccontextmanager
@@ -112,23 +117,24 @@ async def health_check() -> HealthResponse:
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
     """Chat with the AI workout coach.
 
     Send a message and receive personalized fitness advice.
     Optionally includes your current workout data for context.
     """
+    auth_header = _get_auth_header(request)
     workout_context = None
 
-    if request.include_workout_context:
+    if chat_request.include_workout_context:
         try:
             workout_client = get_workout_client()
-            workout_context = await workout_client.get_workout_context()
+            workout_context = await workout_client.get_workout_context(auth_header=auth_header)
         except Exception as e:
             logger.warning(f"Failed to fetch workout context: {e}")
 
     try:
-        response = await chat_with_coach(request.message, workout_context)
+        response = await chat_with_coach(chat_request.message, workout_context)
         return ChatResponse(
             response=response,
             context_used=workout_context is not None and len(workout_context.exercises) > 0
@@ -142,16 +148,18 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 
 @app.post("/recommend", response_model=WorkoutRecommendation)
-async def recommend_workout(request: RecommendationRequest) -> WorkoutRecommendation:
+async def recommend_workout(request: Request, rec_request: RecommendationRequest) -> WorkoutRecommendation:
     """Get AI-generated workout recommendations.
 
     Generates a personalized workout plan based on your current exercises,
     target muscle group, available equipment, and desired session duration.
     """
+    auth_header = _get_auth_header(request)
+
     # Fetch current workout context
     try:
         workout_client = get_workout_client()
-        workout_context = await workout_client.get_workout_context()
+        workout_context = await workout_client.get_workout_context(auth_header=auth_header)
     except Exception as e:
         logger.warning(f"Failed to fetch workout context: {e}")
         workout_context = None
@@ -159,9 +167,9 @@ async def recommend_workout(request: RecommendationRequest) -> WorkoutRecommenda
     try:
         recommendation = await get_workout_recommendation(
             workout_context=workout_context,
-            focus_area=request.focus_area,
-            equipment=request.equipment_available,
-            session_duration=request.session_duration_minutes
+            focus_area=rec_request.focus_area,
+            equipment=rec_request.equipment_available,
+            session_duration=rec_request.session_duration_minutes
         )
         return recommendation
     except Exception as e:
@@ -173,15 +181,17 @@ async def recommend_workout(request: RecommendationRequest) -> WorkoutRecommenda
 
 
 @app.get("/analyze", response_model=ProgressAnalysis)
-async def analyze_workout() -> ProgressAnalysis:
+async def analyze_workout(request: Request) -> ProgressAnalysis:
     """Analyze your current workout routine.
 
     Provides insights on your training strengths, areas for improvement,
     and actionable recommendations based on your logged exercises.
     """
+    auth_header = _get_auth_header(request)
+
     try:
         workout_client = get_workout_client()
-        workout_context = await workout_client.get_workout_context()
+        workout_context = await workout_client.get_workout_context(auth_header=auth_header)
     except Exception as e:
         logger.error(f"Failed to fetch workout context: {e}")
         raise HTTPException(
@@ -207,11 +217,13 @@ async def analyze_workout() -> ProgressAnalysis:
 
 
 @app.get("/exercises")
-async def get_current_exercises():
+async def get_current_exercises(request: Request):
     """Proxy endpoint to fetch current exercises from the workout API."""
+    auth_header = _get_auth_header(request)
+
     try:
         workout_client = get_workout_client()
-        exercises = await workout_client.get_exercises()
+        exercises = await workout_client.get_exercises(auth_header=auth_header)
         return exercises
     except Exception as e:
         logger.error(f"Failed to fetch exercises: {e}")
@@ -219,4 +231,3 @@ async def get_current_exercises():
             status_code=503,
             detail="Unable to connect to workout API."
         )
-

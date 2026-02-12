@@ -40,7 +40,7 @@ def init_db() -> None:
     To run migrations manually: cd services/api && alembic upgrade head
     """
     # Import all models to ensure they're registered with SQLModel metadata
-    from services.api.src.database.db_models import ExerciseTable  # noqa: F401
+    from services.api.src.database.db_models import ExerciseTable, UserTable  # noqa: F401
 
     # Create all tables if they don't exist
     SQLModel.metadata.create_all(engine)

@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from services.api.src.database.database import get_session
 from services.api.src.database.sqlmodel_repository import ExerciseRepository
+from services.api.src.database.user_repository import UserRepository
 
 
 def get_exercise_repository(
@@ -15,18 +16,30 @@ def get_exercise_repository(
 ) -> ExerciseRepository:
     """Provide an ExerciseRepository instance.
 
-    This is a FastAPI dependency that creates a repository
-    with the current database session.
+    Args:
+        session: SQLModel session from dependency injection
+
+    Returns:
+        Repository instance for exercise operations
+    """
+    return ExerciseRepository(session)
+
+
+def get_user_repository(
+    session: Annotated[Session, Depends(get_session)]
+) -> UserRepository:
+    """Provide a UserRepository instance.
 
     Args:
         session: SQLModel session from dependency injection
 
     Returns:
-        ExerciseRepository: Repository instance for exercise operations
+        Repository instance for user operations
     """
-    return ExerciseRepository(session)
+    return UserRepository(session)
 
 
-# Type alias for dependency injection
+# Type aliases for dependency injection
 SessionDep = Annotated[Session, Depends(get_session)]
 RepositoryDep = Annotated[ExerciseRepository, Depends(get_exercise_repository)]
+UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]

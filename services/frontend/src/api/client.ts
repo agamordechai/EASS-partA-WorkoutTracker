@@ -13,6 +13,7 @@ import type {
   ProgressAnalysis,
   AICoachHealthResponse,
 } from '../types/aiCoach';
+import type { User, AuthTokens } from '../types/auth';
 
 // In development, Vite proxies /api to localhost:8000
 // In production, configure API_BASE_URL environment variable
@@ -37,6 +38,67 @@ const aiCoachClient: AxiosInstance = axios.create({
     'X-Trace-Id': TRACE_ID,
   },
 });
+
+// ---------- Auth interceptors ----------
+
+function attachAuthHeader(config: any) {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+}
+
+client.interceptors.request.use(attachAuthHeader);
+aiCoachClient.interceptors.request.use(attachAuthHeader);
+
+// Response interceptor: attempt token refresh on 401
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post<AuthTokens>(
+            `${API_BASE_URL}/auth/refresh`,
+            { refresh_token: refreshToken },
+            { headers: { 'Content-Type': 'application/json' } },
+          );
+          localStorage.setItem('access_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('refresh_token', data.refresh_token);
+          }
+          originalRequest.headers['Authorization'] = `Bearer ${data.access_token}`;
+          return client(originalRequest);
+        } catch {
+          // Refresh failed — clear tokens and reload
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.reload();
+        }
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
+// ---------- Auth API functions ----------
+
+export async function googleLogin(idToken: string): Promise<AuthTokens> {
+  const response = await client.post<AuthTokens>('/auth/google', { id_token: idToken });
+  return response.data;
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await client.get<User>('/auth/me');
+  return response.data;
+}
+
+// ---------- Exercise API functions ----------
 
 export interface ExerciseListParams {
   page?: number;
@@ -149,4 +211,3 @@ export async function getProgressAnalysis(): Promise<ProgressAnalysis> {
 }
 
 export default client;
-

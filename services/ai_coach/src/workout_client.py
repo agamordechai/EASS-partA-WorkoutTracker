@@ -52,16 +52,21 @@ class WorkoutAPIClient:
             logger.warning(f"Workout API health check failed: {e}")
             return False
 
-    async def get_exercises(self) -> list[ExerciseFromAPI]:
+    async def get_exercises(self, auth_header: str | None = None) -> list[ExerciseFromAPI]:
         """Fetch all exercises from the Workout API.
+
+        Args:
+            auth_header: Authorization header value to forward (e.g. 'Bearer xxx')
 
         Returns:
             List of exercises
         """
         try:
             client = await self._get_client()
-            # Fetch with large page_size to get all exercises (API max is 200)
-            response = await client.get("/exercises?page_size=200")
+            headers = {}
+            if auth_header:
+                headers["Authorization"] = auth_header
+            response = await client.get("/exercises?page_size=200", headers=headers)
             response.raise_for_status()
             data = response.json()
 
@@ -75,13 +80,16 @@ class WorkoutAPIClient:
             logger.error(f"Failed to fetch exercises: {e}")
             return []
 
-    async def get_workout_context(self) -> WorkoutContext:
+    async def get_workout_context(self, auth_header: str | None = None) -> WorkoutContext:
         """Build workout context from current exercises.
+
+        Args:
+            auth_header: Authorization header value to forward
 
         Returns:
             WorkoutContext with current workout data
         """
-        exercises = await self.get_exercises()
+        exercises = await self.get_exercises(auth_header=auth_header)
 
         # Calculate total volume
         total_volume = sum(
@@ -146,4 +154,3 @@ async def close_workout_client() -> None:
     if _workout_client:
         await _workout_client.close()
         _workout_client = None
-

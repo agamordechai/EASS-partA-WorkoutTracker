@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Literal
+from typing import AsyncGenerator, Literal, Annotated
 from datetime import datetime, timezone, timedelta
 import csv
 from io import StringIO
@@ -17,22 +17,23 @@ import uuid
 
 from services.api.src.database.config import get_settings
 from services.api.src.database.models import Exercise, ExerciseResponse, ExerciseEditRequest, HealthResponse
-from services.api.src.database.dependencies import RepositoryDep
+from services.api.src.database.dependencies import RepositoryDep, UserRepositoryDep
 from services.api.src.database.database import init_db, get_session
 from services.api.src.database.sqlmodel_repository import ExerciseRepository
+from services.api.src.database.db_models import UserTable
 from services.api.src.auth import (
-    User,
     Token,
-    LoginRequest,
-    authenticate_user,
+    GoogleLoginRequest,
+    RefreshRequest,
+    UserResponse,
+    verify_google_token,
     create_access_token,
     create_refresh_token,
-    get_current_active_user,
+    decode_token,
+    get_current_user,
     require_admin,
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    USERS_DB,
 )
-from typing import Annotated
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -86,13 +87,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
     logger.info("Database tables initialized")
 
-    # Seed initial data if database is empty
-    with next(get_session()) as session:
-        repo = ExerciseRepository(session)
-        count = repo.seed_initial_data()
-        if count > 0:
-            logger.info(f"Seeded {count} initial exercises")
-
     yield
 
     # Shutdown
@@ -135,9 +129,6 @@ async def request_logging_middleware(
     call_next: RequestResponseEndpoint
 ) -> Response:
     """Middleware to log all incoming requests with timing and trace ID.
-
-    Adds request tracing capabilities and performance monitoring by logging
-    each request with a unique trace ID and calculating response time.
 
     Args:
         request: The incoming HTTP request object.
@@ -200,10 +191,10 @@ def health_check() -> HealthResponse:
     db_message = "Connected"
 
     try:
-        # Quick database connectivity check
+        # Quick database connectivity check using system user
         with next(get_session()) as session:
             repo = ExerciseRepository(session)
-            exercises = repo.get_all()
+            exercises = repo.get_all(user_id=1)
             exercise_count = len(exercises)
     except Exception as e:
         db_healthy = False
@@ -230,6 +221,7 @@ _SORTABLE_COLUMNS = {"id", "name", "sets", "reps", "weight", "workout_day"}
 def read_exercises(
     request: Request,
     repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=200, description="Items per page"),
     sort_by: str = Query("id", description="Column to sort by"),
@@ -247,7 +239,7 @@ def read_exercises(
             detail=f"sort_by must be one of: {sorted(_SORTABLE_COLUMNS)}"
         )
 
-    items, total = repository.list_paginated(page, page_size, sort_by, sort_order)
+    items, total = repository.list_paginated(current_user.id, page, page_size, sort_by, sort_order)
 
     if format == "csv":
         buffer = StringIO()
@@ -288,7 +280,12 @@ def read_exercises(
 
 @app.get('/exercises/{exercise_id}', response_model=ExerciseResponse)
 @limiter.limit("120/minute")  # User-level read limit
-def read_exercise(request: Request, exercise_id: int, repository: RepositoryDep) -> ExerciseResponse:
+def read_exercise(
+    request: Request,
+    exercise_id: int,
+    repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+) -> ExerciseResponse:
     """Get a specific exercise by ID.
 
     Args:
@@ -300,7 +297,7 @@ def read_exercise(request: Request, exercise_id: int, repository: RepositoryDep)
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
-    exercise = repository.get_by_id(exercise_id)
+    exercise = repository.get_by_id(exercise_id, current_user.id)
     if not exercise:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return exercise
@@ -312,6 +309,7 @@ def add_exercise(
     request: Request,
     exercise: Exercise,
     repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
 ) -> ExerciseResponse:
     """Create a new exercise in the database.
 
@@ -322,6 +320,7 @@ def add_exercise(
         The newly created exercise with its assigned ID.
     """
     return repository.create(
+        user_id=current_user.id,
         name=exercise.name,
         sets=exercise.sets,
         reps=exercise.reps,
@@ -337,6 +336,7 @@ def edit_exercise_endpoint(
     exercise_id: int,
     exercise_edit: ExerciseEditRequest,
     repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
 ) -> ExerciseResponse:
     """Update any attributes of a specific exercise.
 
@@ -350,13 +350,12 @@ def edit_exercise_endpoint(
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
-    # Check if weight was explicitly provided in the request (even if None/null)
-    # model_dump(exclude_unset=True) only includes fields that were actually set
     provided_fields = exercise_edit.model_dump(exclude_unset=True)
     update_weight_flag = 'weight' in provided_fields
 
     exercise = repository.update(
         exercise_id,
+        user_id=current_user.id,
         name=exercise_edit.name,
         sets=exercise_edit.sets,
         reps=exercise_edit.reps,
@@ -375,6 +374,7 @@ def delete_exercise_endpoint(
     request: Request,
     exercise_id: int,
     repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
 ) -> None:
     """Delete a specific exercise from the database.
 
@@ -384,7 +384,7 @@ def delete_exercise_endpoint(
     Raises:
         HTTPException: 404 error if the exercise is not found.
     """
-    success = repository.delete(exercise_id)
+    success = repository.delete(exercise_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
@@ -392,33 +392,43 @@ def delete_exercise_endpoint(
 
 # ============ Authentication Endpoints ============
 
-@app.post('/auth/login', response_model=Token, tags=["Authentication"])
+@app.post('/auth/google', response_model=Token, tags=["Authentication"])
 @limiter.limit(lambda: ratelimit_settings.auth_limit)
-def login(request: Request, login_request: LoginRequest) -> Token:
-    """Authenticate user and return JWT tokens.
+def google_login(
+    request: Request,
+    login_request: GoogleLoginRequest,
+    user_repo: UserRepositoryDep,
+    exercise_repo: RepositoryDep,
+) -> Token:
+    """Authenticate with Google and return JWT tokens.
+
+    Verifies the Google ID token, creates or finds the user, seeds
+    exercises for new users, and issues JWT access/refresh tokens.
 
     Args:
-        login_request: Username and password.
+        login_request: Contains the Google ID token from the frontend.
 
     Returns:
         Access and refresh tokens.
-
-    Raises:
-        HTTPException: 401 if credentials are invalid.
     """
-    user = authenticate_user(login_request.username, login_request.password)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    google_info = verify_google_token(login_request.id_token, settings.google_client_id)
+
+    user, is_new = user_repo.find_or_create(
+        google_id=google_info["sub"],
+        email=google_info["email"],
+        name=google_info["name"],
+        picture_url=google_info.get("picture"),
+    )
+
+    if is_new:
+        count = exercise_repo.seed_initial_data(user.id)
+        logger.info(f"New user {user.email} created, seeded {count} exercises")
 
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role.value},
+        data={"sub": str(user.id), "role": user.role},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    refresh_token = create_refresh_token(user.username)
+    refresh_token = create_refresh_token(user.id)
 
     return Token(
         access_token=access_token,
@@ -428,12 +438,64 @@ def login(request: Request, login_request: LoginRequest) -> Token:
     )
 
 
-@app.get('/auth/me', response_model=User, tags=["Authentication"])
+@app.post('/auth/refresh', response_model=Token, tags=["Authentication"])
+@limiter.limit(lambda: ratelimit_settings.auth_limit)
+def refresh_token(
+    request: Request,
+    refresh_request: RefreshRequest,
+    user_repo: UserRepositoryDep,
+) -> Token:
+    """Refresh an access token using a refresh token.
+
+    Args:
+        refresh_request: Contains the refresh token.
+
+    Returns:
+        New access and refresh tokens.
+
+    Raises:
+        HTTPException: 401 if refresh token is invalid.
+    """
+    payload = decode_token(refresh_request.refresh_token)
+    if payload is None or payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired refresh token",
+        )
+
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    new_refresh = create_refresh_token(user.id)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=new_refresh,
+    )
+
+
+@app.get('/auth/me', response_model=UserResponse, tags=["Authentication"])
 @limiter.limit(lambda: ratelimit_settings.auth_limit)
 async def get_me(
     request: Request,
-    current_user: Annotated[User, Depends(get_current_active_user)]
-) -> User:
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+) -> UserResponse:
     """Get current authenticated user info.
 
     Args:
@@ -442,14 +504,20 @@ async def get_me(
     Returns:
         Current user details.
     """
-    return current_user
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        picture_url=current_user.picture_url,
+        role=current_user.role,
+    )
 
 
 @app.get('/admin/users', tags=["Admin"])
 @limiter.limit(lambda: ratelimit_settings.admin_limit)
 async def list_users(
     request: Request,
-    current_user: Annotated[User, Depends(require_admin)]
+    current_user: Annotated[UserTable, Depends(require_admin)],
 ) -> list[dict]:
     """List all users (admin only).
 
@@ -457,16 +525,17 @@ async def list_users(
         current_user: Current admin user.
 
     Returns:
-        List of users (without passwords).
+        List of users.
     """
+    # For now return just the current admin user info
     return [
         {
-            "username": user.username,
-            "email": user.email,
-            "role": user.role.value,
-            "disabled": user.disabled
+            "id": current_user.id,
+            "email": current_user.email,
+            "name": current_user.name,
+            "role": current_user.role,
+            "disabled": current_user.disabled,
         }
-        for user in USERS_DB.values()
     ]
 
 
@@ -475,7 +544,7 @@ async def list_users(
 async def admin_delete_exercise(
     request: Request,
     exercise_id: int,
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[UserTable, Depends(require_admin)],
     repository: RepositoryDep
 ) -> None:
     """Delete exercise (admin only, protected route).
@@ -487,8 +556,7 @@ async def admin_delete_exercise(
     Raises:
         HTTPException: 404 if exercise not found.
     """
-    success = repository.delete(exercise_id)
+    success = repository.delete(exercise_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail='Exercise not found')
     return None
-

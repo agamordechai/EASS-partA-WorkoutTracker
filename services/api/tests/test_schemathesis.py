@@ -8,7 +8,8 @@ Auth-protected endpoints (/auth/me, /admin/*) are covered via a ``map_headers``
 hook that injects valid Bearer tokens.
 
 Explicit tests below target edge cases that random generation is unlikely to
-hit: login flows, token lifecycle, RBAC enforcement, and field boundary values.
+hit: Google auth flows, token lifecycle, RBAC enforcement, and field boundary
+values.
 
 Performance:
   - By default, runs with max_examples=10 (fast mode)
@@ -19,15 +20,16 @@ Performance:
 import pytest
 import schemathesis
 from datetime import timedelta
-from sqlmodel import SQLModel
+from unittest.mock import patch
+from sqlmodel import SQLModel, Session
 from fastapi.testclient import TestClient
 from schemathesis.specs.openapi.checks import negative_data_rejection, ignored_auth
 from hypothesis import settings, Phase
 
 from services.api.src.api import app, limiter
 from services.api.src.auth import create_access_token
-from services.api.src.database.database import engine
-from services.api.src.database.db_models import ExerciseTable  # noqa: F401 — registers model
+from services.api.src.database.database import engine, get_session
+from services.api.src.database.db_models import ExerciseTable, UserTable  # noqa: F401 — registers models
 
 
 # ---------------------------------------------------------------------------
@@ -46,10 +48,27 @@ settings.load_profile("fast")  # Use fast profile by default
 # ---------------------------------------------------------------------------
 
 
-def _token(username: str, role: str, minutes: int = 30) -> str:
+def _ensure_user(session: Session, user_id: int, role: str = "user") -> UserTable:
+    """Ensure a test user exists in the database."""
+    user = session.get(UserTable, user_id)
+    if user is None:
+        user = UserTable(
+            id=user_id,
+            google_id=f"test-google-{user_id}",
+            email=f"testuser{user_id}@example.com",
+            name=f"Test User {user_id}",
+            role=role,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return user
+
+
+def _token(user_id: int, role: str, minutes: int = 30) -> str:
     """Mint a signed JWT for test requests."""
     return create_access_token(
-        data={"sub": username, "role": role},
+        data={"sub": str(user_id), "role": role},
         expires_delta=timedelta(minutes=minutes),
     )
 
@@ -60,6 +79,11 @@ def _token(username: str, role: str, minutes: int = 30) -> str:
 # ---------------------------------------------------------------------------
 
 SQLModel.metadata.create_all(engine)
+
+# Ensure test users exist for schema-level tests
+with Session(engine) as _session:
+    _ensure_user(_session, 2, "user")
+    _ensure_user(_session, 3, "admin")
 
 # ---------------------------------------------------------------------------
 # Disable rate limiter — requires Redis which is unavailable in unit-test
@@ -83,10 +107,10 @@ def map_headers(ctx, headers):
     """Inject Bearer tokens for endpoints that require authentication."""
     headers = headers or {}
     path = ctx.operation.full_path
-    if path == "/auth/me":
-        headers["Authorization"] = f"Bearer {_token('user', 'user')}"
+    if path == "/auth/me" or path.startswith("/exercises"):
+        headers["Authorization"] = f"Bearer {_token(2, 'user')}"
     elif path.startswith("/admin"):
-        headers["Authorization"] = f"Bearer {_token('admin', 'admin')}"
+        headers["Authorization"] = f"Bearer {_token(3, 'admin')}"
     return headers
 
 
@@ -166,42 +190,48 @@ def client():
         yield c
 
 
+@pytest.fixture()
+def user_headers():
+    """Auth headers for a regular user (id=2)."""
+    return {"Authorization": f"Bearer {_token(2, 'user')}"}
+
+
+@pytest.fixture()
+def admin_headers():
+    """Auth headers for an admin user (id=3)."""
+    return {"Authorization": f"Bearer {_token(3, 'admin')}"}
+
+
 # ---------------------------------------------------------------------------
-# Explicit: login / token lifecycle
+# Explicit: Google auth / token lifecycle
 # ---------------------------------------------------------------------------
 
 
-class TestLoginExplicit:
-    """Targeted login edge cases that random generation rarely hits."""
+class TestGoogleAuthExplicit:
+    """Targeted Google auth edge cases."""
 
-    def test_valid_admin_login(self, client):
-        resp = client.post("/auth/login", json={"username": "admin", "password": "admin123"})
+    @patch("services.api.src.api.verify_google_token")
+    def test_valid_google_login(self, mock_verify, client):
+        mock_verify.return_value = {
+            "sub": "google-new-user-999",
+            "email": "newuser@example.com",
+            "name": "New User",
+            "picture": "https://example.com/photo.jpg",
+        }
+        resp = client.post("/auth/google", json={"id_token": "fake-google-token"})
         assert resp.status_code == 200
         body = resp.json()
         assert "access_token" in body
         assert body["token_type"] == "bearer"
-        assert body["expires_in"] == 1800  # 30 min * 60 s
+        assert "refresh_token" in body
 
-    def test_valid_user_login(self, client):
-        resp = client.post("/auth/login", json={"username": "user", "password": "user123"})
-        assert resp.status_code == 200
-        assert "access_token" in resp.json()
-
-    def test_wrong_password_returns_401(self, client):
-        resp = client.post("/auth/login", json={"username": "admin", "password": "wrong123"})
-        assert resp.status_code == 401
-
-    def test_nonexistent_user_returns_401(self, client):
-        resp = client.post("/auth/login", json={"username": "nobody", "password": "nope12"})
-        assert resp.status_code == 401
-
-    def test_password_below_min_length_returns_422(self, client):
-        resp = client.post("/auth/login", json={"username": "admin", "password": "ab"})
+    def test_google_login_missing_token_returns_422(self, client):
+        resp = client.post("/auth/google", json={})
         assert resp.status_code == 422
 
-    def test_username_below_min_length_returns_422(self, client):
-        resp = client.post("/auth/login", json={"username": "ab", "password": "admin123"})
-        assert resp.status_code == 422
+    def test_refresh_with_invalid_token_returns_401(self, client):
+        resp = client.post("/auth/refresh", json={"refresh_token": "invalid.token"})
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
@@ -212,19 +242,19 @@ class TestLoginExplicit:
 class TestAuthMeExplicit:
     """Token-based /auth/me edge cases."""
 
-    def test_returns_current_user(self, client):
-        token = _token("user", "user")
-        resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    def test_returns_current_user(self, client, user_headers):
+        resp = client.get("/auth/me", headers=user_headers)
         assert resp.status_code == 200
-        assert resp.json()["username"] == "user"
-        assert resp.json()["role"] == "user"
+        body = resp.json()
+        assert "email" in body
+        assert body["role"] == "user"
 
     def test_missing_token_returns_401(self, client):
         resp = client.get("/auth/me")
         assert resp.status_code == 401
 
     def test_expired_token_returns_401(self, client):
-        token = _token("user", "user", minutes=-1)
+        token = _token(2, "user", minutes=-1)
         resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 401
 
@@ -241,27 +271,24 @@ class TestAuthMeExplicit:
 class TestAdminExplicit:
     """Admin endpoint access-control checks."""
 
-    def test_list_users_as_admin(self, client):
-        token = _token("admin", "admin")
-        resp = client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
+    def test_list_users_as_admin(self, client, admin_headers):
+        resp = client.get("/admin/users", headers=admin_headers)
         assert resp.status_code == 200
-        usernames = [u["username"] for u in resp.json()]
-        assert "admin" in usernames
-        assert "user" in usernames
+        body = resp.json()
+        assert isinstance(body, list)
+        assert len(body) > 0
+        assert "email" in body[0]
 
-    def test_list_users_as_regular_user_returns_403(self, client):
-        token = _token("user", "user")
-        resp = client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
+    def test_list_users_as_regular_user_returns_403(self, client, user_headers):
+        resp = client.get("/admin/users", headers=user_headers)
         assert resp.status_code == 403
 
-    def test_admin_delete_missing_exercise_returns_404(self, client):
-        token = _token("admin", "admin")
-        resp = client.delete("/admin/exercises/99999", headers={"Authorization": f"Bearer {token}"})
+    def test_admin_delete_missing_exercise_returns_404(self, client, admin_headers):
+        resp = client.delete("/admin/exercises/99999", headers=admin_headers)
         assert resp.status_code == 404
 
-    def test_admin_delete_as_regular_user_returns_403(self, client):
-        token = _token("user", "user")
-        resp = client.delete("/admin/exercises/1", headers={"Authorization": f"Bearer {token}"})
+    def test_admin_delete_as_regular_user_returns_403(self, client, user_headers):
+        resp = client.delete("/admin/exercises/1", headers=user_headers)
         assert resp.status_code == 403
 
 
@@ -273,46 +300,46 @@ class TestAdminExplicit:
 class TestExerciseBoundaryExplicit:
     """Boundary-value exercise CRUD — values that fuzzing may skip."""
 
-    def test_minimum_valid_values(self, client):
-        resp = client.post("/exercises", json={"name": "X", "sets": 1, "reps": 1})
+    def test_minimum_valid_values(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "X", "sets": 1, "reps": 1}, headers=user_headers)
         assert resp.status_code == 201
         assert resp.json()["sets"] == 1
         assert resp.json()["reps"] == 1
 
-    def test_maximum_sets_accepted(self, client):
-        resp = client.post("/exercises", json={"name": "MaxSets", "sets": 100, "reps": 1})
+    def test_maximum_sets_accepted(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "MaxSets", "sets": 100, "reps": 1}, headers=user_headers)
         assert resp.status_code == 201
         assert resp.json()["sets"] == 100
 
-    def test_maximum_reps_accepted(self, client):
-        resp = client.post("/exercises", json={"name": "MaxReps", "sets": 1, "reps": 1000})
+    def test_maximum_reps_accepted(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "MaxReps", "sets": 1, "reps": 1000}, headers=user_headers)
         assert resp.status_code == 201
         assert resp.json()["reps"] == 1000
 
-    def test_zero_weight_accepted(self, client):
-        resp = client.post("/exercises", json={"name": "ZeroWt", "sets": 1, "reps": 1, "weight": 0.0})
+    def test_zero_weight_accepted(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "ZeroWt", "sets": 1, "reps": 1, "weight": 0.0}, headers=user_headers)
         assert resp.status_code == 201
         assert resp.json()["weight"] == 0.0
 
-    def test_sets_above_max_rejected(self, client):
-        resp = client.post("/exercises", json={"name": "Over", "sets": 101, "reps": 1})
+    def test_sets_above_max_rejected(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "Over", "sets": 101, "reps": 1}, headers=user_headers)
         assert resp.status_code == 422
 
-    def test_reps_above_max_rejected(self, client):
-        resp = client.post("/exercises", json={"name": "Over", "sets": 1, "reps": 1001})
+    def test_reps_above_max_rejected(self, client, user_headers):
+        resp = client.post("/exercises", json={"name": "Over", "sets": 1, "reps": 1001}, headers=user_headers)
         assert resp.status_code == 422
 
-    def test_patch_weight_to_null_clears_weight(self, client):
-        create = client.post("/exercises", json={"name": "W", "sets": 1, "reps": 1, "weight": 50.0})
+    def test_patch_weight_to_null_clears_weight(self, client, user_headers):
+        create = client.post("/exercises", json={"name": "W", "sets": 1, "reps": 1, "weight": 50.0}, headers=user_headers)
         eid = create.json()["id"]
-        resp = client.patch(f"/exercises/{eid}", json={"weight": None})
+        resp = client.patch(f"/exercises/{eid}", json={"weight": None}, headers=user_headers)
         assert resp.status_code == 200
         assert resp.json()["weight"] is None
 
-    def test_patch_empty_body_leaves_exercise_unchanged(self, client):
-        create = client.post("/exercises", json={"name": "NoChange", "sets": 3, "reps": 10})
+    def test_patch_empty_body_leaves_exercise_unchanged(self, client, user_headers):
+        create = client.post("/exercises", json={"name": "NoChange", "sets": 3, "reps": 10}, headers=user_headers)
         eid = create.json()["id"]
-        resp = client.patch(f"/exercises/{eid}", json={})
+        resp = client.patch(f"/exercises/{eid}", json={}, headers=user_headers)
         assert resp.status_code == 200
         assert resp.json()["name"] == "NoChange"
         assert resp.json()["sets"] == 3

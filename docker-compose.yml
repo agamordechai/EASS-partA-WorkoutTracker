@@ -64,6 +64,9 @@ services:
       # JWT Authentication
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default-docker-secret-change-me}
 
+      # Google OAuth
+      - APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+
       # Python configuration
       - PYTHONUNBUFFERED=1
 
@@ -181,6 +184,8 @@ services:
     build:
       context: ./services/frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     container_name: workout-tracker-frontend
     ports:
       - "3000:80"

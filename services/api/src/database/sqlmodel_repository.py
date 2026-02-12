@@ -1,7 +1,7 @@
 """SQLModel-based repository for Workout Tracker API.
 
 Provides CRUD operations for exercises using SQLModel ORM.
-This replaces the raw SQL implementation with proper ORM patterns.
+All queries are scoped to a specific user via user_id.
 """
 from __future__ import annotations
 from sqlmodel import Session, select
@@ -14,8 +14,7 @@ from services.api.src.database.models import ExerciseResponse
 class ExerciseRepository:
     """Repository for exercise CRUD operations using SQLModel.
 
-    This class encapsulates all database operations for exercises,
-    providing a clean interface for the API layer.
+    All operations are scoped to a specific user_id for data isolation.
 
     Attributes:
         session: SQLModel database session
@@ -29,26 +28,31 @@ class ExerciseRepository:
         """
         self.session = session
 
-    def get_all(self) -> list[ExerciseResponse]:
-        """Retrieve all exercises from the database.
+    def get_all(self, user_id: int) -> list[ExerciseResponse]:
+        """Retrieve all exercises for a user.
+
+        Args:
+            user_id: Owner's user ID
 
         Returns:
-            List of all exercises.
+            List of all exercises belonging to the user.
         """
-        statement = select(ExerciseTable)
+        statement = select(ExerciseTable).where(ExerciseTable.user_id == user_id)
         results = self.session.exec(statement).all()
         return [ExerciseResponse.model_validate(ex.model_dump()) for ex in results]
 
     def list_paginated(
         self,
+        user_id: int,
         page: int = 1,
         page_size: int = 20,
         sort_by: str = "id",
         sort_order: str = "asc",
     ) -> tuple[list[ExerciseResponse], int]:
-        """Retrieve paginated and sorted exercises.
+        """Retrieve paginated and sorted exercises for a user.
 
         Args:
+            user_id: Owner's user ID
             page: Page number (1-indexed)
             page_size: Number of items per page
             sort_by: Column name to sort by
@@ -58,13 +62,16 @@ class ExerciseRepository:
             Tuple of exercises for the page and total count.
         """
         total = self.session.execute(
-            select(func.count()).select_from(ExerciseTable)
+            select(func.count()).select_from(ExerciseTable).where(
+                ExerciseTable.user_id == user_id
+            )
         ).scalar() or 0
 
         column = getattr(ExerciseTable, sort_by)
         order = column.desc() if sort_order == "desc" else column.asc()
         statement = (
             select(ExerciseTable)
+            .where(ExerciseTable.user_id == user_id)
             .order_by(order)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -73,31 +80,38 @@ class ExerciseRepository:
         items = [ExerciseResponse.model_validate(ex.model_dump()) for ex in results]
         return items, total
 
-    def get_by_id(self, exercise_id: int) -> ExerciseResponse | None:
-        """Retrieve a specific exercise by ID.
+    def get_by_id(self, exercise_id: int, user_id: int) -> ExerciseResponse | None:
+        """Retrieve a specific exercise by ID, scoped to user.
 
         Args:
             exercise_id: The unique identifier of the exercise
+            user_id: Owner's user ID
 
         Returns:
-            The exercise if found, None otherwise.
+            The exercise if found and owned by user, None otherwise.
         """
-        exercise = self.session.get(ExerciseTable, exercise_id)
+        statement = select(ExerciseTable).where(
+            ExerciseTable.id == exercise_id,
+            ExerciseTable.user_id == user_id,
+        )
+        exercise = self.session.exec(statement).first()
         if exercise:
             return ExerciseResponse.model_validate(exercise.model_dump())
         return None
 
     def create(
         self,
+        user_id: int,
         name: str,
         sets: int,
         reps: int,
         weight: float | None = None,
         workout_day: str = 'A'
     ) -> ExerciseResponse:
-        """Create a new exercise in the database.
+        """Create a new exercise for a user.
 
         Args:
+            user_id: Owner's user ID
             name: Exercise name
             sets: Number of sets
             reps: Number of repetitions
@@ -112,7 +126,8 @@ class ExerciseRepository:
             sets=sets,
             reps=reps,
             weight=weight,
-            workout_day=workout_day
+            workout_day=workout_day,
+            user_id=user_id,
         )
         self.session.add(exercise)
         self.session.commit()
@@ -122,6 +137,7 @@ class ExerciseRepository:
     def update(
         self,
         exercise_id: int,
+        user_id: int,
         name: str | None = None,
         sets: int | None = None,
         reps: int | None = None,
@@ -129,10 +145,11 @@ class ExerciseRepository:
         update_weight: bool = False,
         workout_day: str | None = None
     ) -> ExerciseResponse | None:
-        """Update an existing exercise.
+        """Update an existing exercise owned by a user.
 
         Args:
             exercise_id: ID of exercise to update
+            user_id: Owner's user ID
             name: New name (optional)
             sets: New sets count (optional)
             reps: New reps count (optional)
@@ -143,11 +160,14 @@ class ExerciseRepository:
         Returns:
             The updated exercise if found, None otherwise.
         """
-        exercise = self.session.get(ExerciseTable, exercise_id)
+        statement = select(ExerciseTable).where(
+            ExerciseTable.id == exercise_id,
+            ExerciseTable.user_id == user_id,
+        )
+        exercise = self.session.exec(statement).first()
         if not exercise:
             return None
 
-        # Update only provided fields
         if name is not None:
             exercise.name = name
         if sets is not None:
@@ -164,16 +184,21 @@ class ExerciseRepository:
         self.session.refresh(exercise)
         return ExerciseResponse.model_validate(exercise.model_dump())
 
-    def delete(self, exercise_id: int) -> bool:
-        """Delete an exercise by ID.
+    def delete(self, exercise_id: int, user_id: int) -> bool:
+        """Delete an exercise owned by a user.
 
         Args:
             exercise_id: ID of exercise to delete
+            user_id: Owner's user ID
 
         Returns:
             True if deleted, False if not found
         """
-        exercise = self.session.get(ExerciseTable, exercise_id)
+        statement = select(ExerciseTable).where(
+            ExerciseTable.id == exercise_id,
+            ExerciseTable.user_id == user_id,
+        )
+        exercise = self.session.exec(statement).first()
         if not exercise:
             return False
 
@@ -181,47 +206,51 @@ class ExerciseRepository:
         self.session.commit()
         return True
 
-    def seed_initial_data(self) -> int:
-        """Seed database with initial workout data if empty.
+    def seed_initial_data(self, user_id: int) -> int:
+        """Seed database with initial workout data for a specific user.
+
+        Only seeds if the user has no exercises yet.
+
+        Args:
+            user_id: User to seed data for
 
         Returns:
             Number of exercises seeded
         """
-        # Check if database is empty
-        statement = select(ExerciseTable)
+        # Check if user already has exercises
+        statement = select(ExerciseTable).where(ExerciseTable.user_id == user_id)
         existing = self.session.exec(statement).first()
         if existing:
             return 0
 
-        # Seed data
         seed_exercises = [
-            ExerciseTable(name='Bench Press', sets=3, reps=10, weight=100.0, workout_day='A'),
-            ExerciseTable(name='Shoulder Press', sets=3, reps=10, weight=22.5, workout_day='A'),
-            ExerciseTable(name='Tricep Extension', sets=3, reps=10, weight=42.5, workout_day='A'),
-            ExerciseTable(name='Pull ups', sets=5, reps=8, weight=None, workout_day='B'),
-            ExerciseTable(name='Squats', sets=3, reps=8, weight=95.0, workout_day='C'),
-            ExerciseTable(name='Hip Thrust', sets=3, reps=10, weight=100.0, workout_day='C'),
-            ExerciseTable(name='Bulgarian Split Squat', sets=3, reps=8, weight=27.5, workout_day='C'),
-            ExerciseTable(name='Hip Adduction', sets=3, reps=16, weight=90.0, workout_day='C'),
-            ExerciseTable(name='Hip Abduction', sets=3, reps=16, weight=90.0, workout_day='C'),
-            ExerciseTable(name='Incline Bench Press', sets=3, reps=10, weight=37.5, workout_day='A'),
-            ExerciseTable(name='Chest Fly', sets=3, reps=10, weight=20.0, workout_day='A'),
-            ExerciseTable(name='Upper Chest Fly', sets=3, reps=10, weight=20.0, workout_day='A'),
-            ExerciseTable(name='Shoulder Extension', sets=5, reps=8, weight=12.5, workout_day='A'),
-            ExerciseTable(name='Overhead Tricep Extension', sets=3, reps=8, weight=17.5, workout_day='A'),
-            ExerciseTable(name='Cable Row', sets=3, reps=12, weight=80.0, workout_day='B'),
-            ExerciseTable(name='Pull Over', sets=3, reps=10, weight=45.0, workout_day='B'),
-            ExerciseTable(name='Dumbbell Shrugs', sets=3, reps=12, weight=35.0, workout_day='B'),
-            ExerciseTable(name='Rear Delt', sets=3, reps=10, weight=10.0, workout_day='B'),
-            ExerciseTable(name='Bicep Curl', sets=3, reps=10, weight=35.0, workout_day='B'),
-            ExerciseTable(name='Bicep Hammer Curls', sets=3, reps=8, weight=25.0, workout_day='B'),
-            ExerciseTable(name='Knee Extension', sets=3, reps=10, weight=164.0, workout_day='C'),
-            ExerciseTable(name='Knee Flexion', sets=3, reps=10, weight=90.0, workout_day='C'),
-            ExerciseTable(name='Crunches', sets=1, reps=30, weight=None, workout_day='None'),
-            ExerciseTable(name='Penguins', sets=1, reps=25, weight=None, workout_day='None'),
-            ExerciseTable(name='Leg drops', sets=1, reps=25, weight=None, workout_day='None'),
-            ExerciseTable(name='Plank', sets=1, reps=90, weight=None, workout_day='None'),
-            ExerciseTable(name='Running', sets=1, reps=30, weight=None, workout_day='None'),
+            ExerciseTable(name='Bench Press', sets=3, reps=10, weight=100.0, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Shoulder Press', sets=3, reps=10, weight=22.5, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Tricep Extension', sets=3, reps=10, weight=42.5, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Pull ups', sets=5, reps=8, weight=None, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Squats', sets=3, reps=8, weight=95.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Hip Thrust', sets=3, reps=10, weight=100.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Bulgarian Split Squat', sets=3, reps=8, weight=27.5, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Hip Adduction', sets=3, reps=16, weight=90.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Hip Abduction', sets=3, reps=16, weight=90.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Incline Bench Press', sets=3, reps=10, weight=37.5, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Chest Fly', sets=3, reps=10, weight=20.0, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Upper Chest Fly', sets=3, reps=10, weight=20.0, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Shoulder Extension', sets=5, reps=8, weight=12.5, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Overhead Tricep Extension', sets=3, reps=8, weight=17.5, workout_day='A', user_id=user_id),
+            ExerciseTable(name='Cable Row', sets=3, reps=12, weight=80.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Pull Over', sets=3, reps=10, weight=45.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Dumbbell Shrugs', sets=3, reps=12, weight=35.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Rear Delt', sets=3, reps=10, weight=10.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Bicep Curl', sets=3, reps=10, weight=35.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Bicep Hammer Curls', sets=3, reps=8, weight=25.0, workout_day='B', user_id=user_id),
+            ExerciseTable(name='Knee Extension', sets=3, reps=10, weight=164.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Knee Flexion', sets=3, reps=10, weight=90.0, workout_day='C', user_id=user_id),
+            ExerciseTable(name='Crunches', sets=1, reps=30, weight=None, workout_day='None', user_id=user_id),
+            ExerciseTable(name='Penguins', sets=1, reps=25, weight=None, workout_day='None', user_id=user_id),
+            ExerciseTable(name='Leg drops', sets=1, reps=25, weight=None, workout_day='None', user_id=user_id),
+            ExerciseTable(name='Plank', sets=1, reps=90, weight=None, workout_day='None', user_id=user_id),
+            ExerciseTable(name='Running', sets=1, reps=30, weight=None, workout_day='None', user_id=user_id),
         ]
 
         for exercise in seed_exercises:

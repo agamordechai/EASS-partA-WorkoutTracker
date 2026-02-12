@@ -65,6 +65,7 @@ SAMPLE_EXERCISES = [
 def seed(
     count: int = typer.Option(10, "--count", "-c", help="Number of exercises to create"),
     force: bool = typer.Option(False, "--force", "-f", help="Force seed even if data exists"),
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to seed exercises for"),
 ) -> None:
     """Seed the database with sample exercises.
 
@@ -86,7 +87,7 @@ def seed(
 
     with next(get_session()) as session:
         repo = ExerciseRepository(session)
-        existing = repo.get_all()
+        existing = repo.get_all(user_id)
 
         if existing and not force:
             console.print(
@@ -102,7 +103,7 @@ def seed(
         created = []
         for i in track(range(exercises_to_create), description="Seeding exercises"):
             exercise_data = SAMPLE_EXERCISES[i]
-            exercise = repo.create(**exercise_data)
+            exercise = repo.create(user_id=user_id, **exercise_data)
             created.append(exercise)
 
         # Display results in a table
@@ -126,7 +127,7 @@ def seed(
         console.print(table)
 
         # Final count
-        all_exercises = repo.get_all()
+        all_exercises = repo.get_all(user_id)
         console.print(f"\n[bold green]✓ Total exercises in database: {len(all_exercises)}[/bold green]\n")
 
 
@@ -134,6 +135,7 @@ def seed(
 def reset(
     sample: int = typer.Option(5, "--sample", "-s", help="Number of sample exercises to seed"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to seed exercises for"),
 ) -> None:
     """Reset the database (drop all data and reseed).
 
@@ -168,7 +170,7 @@ def reset(
         created = []
         for i in track(range(min(sample, len(SAMPLE_EXERCISES))), description="Seeding"):
             exercise_data = SAMPLE_EXERCISES[i]
-            exercise = repo.create(**exercise_data)
+            exercise = repo.create(user_id=user_id, **exercise_data)
             created.append(exercise)
 
         console.print(f"[bold green]✓ Reset complete! Created {len(created)} exercises.[/bold green]\n")
@@ -179,6 +181,7 @@ def export(
     format: str = typer.Option("csv", "--format", "-f", help="Export format: csv or json"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),
     workout_day: str | None = typer.Option(None, "--day", "-d", help="Filter by workout day"),
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to export exercises for"),
 ) -> None:
     """Export exercises to CSV or JSON format.
 
@@ -199,7 +202,7 @@ def export(
     # Get exercises
     with next(get_session()) as session:
         repo = ExerciseRepository(session)
-        exercises = repo.get_all()
+        exercises = repo.get_all(user_id)
 
         # Filter by workout day if specified
         if workout_day:
@@ -260,7 +263,9 @@ def export(
 
 
 @app.command()
-def stats() -> None:
+def stats(
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to show stats for"),
+) -> None:
     """Show workout statistics and summaries.
 
     Displays:
@@ -279,7 +284,7 @@ def stats() -> None:
 
     with next(get_session()) as session:
         repo = ExerciseRepository(session)
-        exercises = repo.get_all()
+        exercises = repo.get_all(user_id)
 
         if not exercises:
             console.print("[yellow]No exercises in database.[/yellow]")
@@ -351,6 +356,7 @@ def stats() -> None:
 def list(
     day: str | None = typer.Option(None, "--day", "-d", help="Filter by workout day"),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum number to display"),
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to list exercises for"),
 ) -> None:
     """List exercises in a formatted table.
 
@@ -361,7 +367,7 @@ def list(
     """
     with next(get_session()) as session:
         repo = ExerciseRepository(session)
-        exercises = repo.get_all()
+        exercises = repo.get_all(user_id)
 
         # Filter by day if specified
         if day:
@@ -400,7 +406,9 @@ def list(
 
 
 @app.command()
-def info() -> None:
+def info(
+    user_id: int = typer.Option(1, "--user-id", "-u", help="User ID to show info for"),
+) -> None:
     """Display database connection and table information.
 
     Example:
@@ -413,7 +421,7 @@ def info() -> None:
 
     with next(get_session()) as session:
         repo = ExerciseRepository(session)
-        exercises = repo.get_all()
+        exercises = repo.get_all(user_id)
 
         rprint(f"[cyan]Total exercises:[/cyan] {len(exercises)}")
         rprint(f"[cyan]Database backend:[/cyan] SQLModel + PostgreSQL/SQLite")

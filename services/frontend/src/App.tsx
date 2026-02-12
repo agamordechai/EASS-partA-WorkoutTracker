@@ -18,9 +18,12 @@ import {
   deleteExercise,
 } from './api/client';
 import type { Exercise, CreateExerciseRequest, UpdateExerciseRequest } from './types/exercise';
+import { useAuth } from './contexts/AuthContext';
+import LoginPage from './components/LoginPage';
 import './App.css';
 
 function App() {
+  const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +49,13 @@ function App() {
     }
   }, []);
 
-  // Initial load and auto-refresh every 30 seconds
+  // Initial load and auto-refresh every 30 seconds (only when authenticated)
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchExercises();
     const interval = setInterval(fetchExercises, 30000);
     return () => clearInterval(interval);
-  }, [fetchExercises]);
+  }, [fetchExercises, isAuthenticated]);
 
   // Handle create exercise
   const handleCreate = async (data: CreateExerciseRequest) => {
@@ -75,12 +79,39 @@ function App() {
     }
   };
 
+  // Show loading spinner while checking auth
+  if (authLoading) {
+    return (
+      <div className="app">
+        <main className="app-main" style={{ gridColumn: '1 / -1' }}>
+          <div className="loading">Loading...</div>
+        </main>
+      </div>
+    );
+  }
+
+  // Not authenticated — show login page
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
   if (error) {
     return (
       <div className="app">
         <header className="app-header">
-          <h1>🏋️ Workout Tracker Dashboard</h1>
-          <p>View, create, and manage your workout exercises</p>
+          <div className="header-content">
+            <div>
+              <h1>Workout Tracker Dashboard</h1>
+              <p>View, create, and manage your workout exercises</p>
+            </div>
+            <div className="user-header">
+              {user?.picture_url && (
+                <img src={user.picture_url} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+              )}
+              <span className="user-name">{user?.name}</span>
+              <button className="btn btn-secondary btn-sm" onClick={logout}>Sign out</button>
+            </div>
+          </div>
         </header>
         <main className="app-main">
           <div className="error-container">
@@ -101,8 +132,19 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🏋️ Workout Tracker Dashboard</h1>
-        <p>View, create, and manage your workout exercises</p>
+        <div className="header-content">
+          <div>
+            <h1>Workout Tracker Dashboard</h1>
+            <p>View, create, and manage your workout exercises</p>
+          </div>
+          <div className="user-header">
+            {user?.picture_url && (
+              <img src={user.picture_url} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+            )}
+            <span className="user-name">{user?.name}</span>
+            <button className="btn btn-secondary btn-sm" onClick={logout}>Sign out</button>
+          </div>
+        </div>
       </header>
 
       <aside className="sidebar">
@@ -116,18 +158,18 @@ function App() {
         </button>
 
         <div className="sidebar-section">
-          <h3>🤖 AI Coach</h3>
+          <h3>AI Coach</h3>
           <button
             className="btn btn-coach full-width"
             onClick={() => setShowAIChat(true)}
           >
-            💬 Chat with Coach
+            Chat with Coach
           </button>
           <button
             className="btn btn-coach full-width"
             onClick={() => setShowRecommendations(true)}
           >
-            💪 Get Recommendations
+            Get Recommendations
           </button>
         </div>
 
@@ -182,4 +224,3 @@ function App() {
 }
 
 export default App;
-

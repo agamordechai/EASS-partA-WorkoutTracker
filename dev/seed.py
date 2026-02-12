@@ -16,11 +16,12 @@ from services.api.src.database.database import init_db, get_session
 from services.api.src.database.sqlmodel_repository import ExerciseRepository
 
 
-def seed_exercises(count: int = 27) -> None:
+def seed_exercises(count: int = 27, user_id: int = 1) -> None:
     """Seed the database with sample exercises.
 
     Args:
         count: Number of exercises to create (max 27)
+        user_id: User ID to seed exercises for
     """
     sample_exercises = [
         {"name": "Bench Press", "sets": 3, "reps": 10, "weight": 100.0, "workout_day": "A"},
@@ -64,12 +65,12 @@ def seed_exercises(count: int = 27) -> None:
 
         for i in range(exercises_to_create):
             exercise_data = sample_exercises[i]
-            exercise = repo.create(**exercise_data)
+            exercise = repo.create(user_id=user_id, **exercise_data)
             weight_str = f"{exercise.weight} kg" if exercise.weight else "Bodyweight"
             print(f"  ✓ Created: {exercise.name} ({exercise.sets}x{exercise.reps}, {weight_str}) - Day {exercise.workout_day}")
 
         # Count all exercises
-        all_exercises = repo.get_all()
+        all_exercises = repo.get_all(user_id)
         print(f"\nDone! Total exercises in database: {len(all_exercises)}")
 
 
@@ -83,7 +84,13 @@ if __name__ == "__main__":
         default=27,
         help="Number of exercises to create (default: 27, max: 27)"
     )
+    parser.add_argument(
+        "--user-id", "-u",
+        type=int,
+        default=1,
+        help="User ID to seed exercises for (default: 1 = system user)"
+    )
 
     args = parser.parse_args()
-    seed_exercises(args.count)
+    seed_exercises(args.count, args.user_id)
 

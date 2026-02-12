@@ -32,7 +32,8 @@ def list_exercises(
     page: int = 1,
     page_size: int = 10,
     sort_by: str = "id",
-    sort_order: str = "asc"
+    sort_order: str = "asc",
+    user_id: int = 1,
 ) -> dict:
     """List workout exercises with pagination and sorting.
 
@@ -41,26 +42,10 @@ def list_exercises(
         page_size: Number of exercises per page (1-100, default: 10)
         sort_by: Column to sort by (id, name, sets, reps, weight, workout_day)
         sort_order: Sort order ('asc' or 'desc', default: 'asc')
+        user_id: User ID to list exercises for (default: 1 = system user)
 
     Returns:
-        Dictionary with pagination metadata and exercise items:
-        {
-            "status": 200,
-            "page": 1,
-            "page_size": 10,
-            "total": 42,
-            "items": [
-                {
-                    "id": 1,
-                    "name": "Bench Press",
-                    "sets": 4,
-                    "reps": 8,
-                    "weight": 80.0,
-                    "workout_day": "A"
-                },
-                ...
-            ]
-        }
+        Dictionary with pagination metadata and exercise items.
     """
     # Validate parameters
     if page < 1:
@@ -73,19 +58,17 @@ def list_exercises(
         return {"status": 400, "error": "sort_order must be 'asc' or 'desc'"}
 
     try:
-        # Create database session and repository
         with Session(engine) as session:
             repo = ExerciseRepository(session)
 
-            # Query exercises with pagination
             exercises, total = repo.list_paginated(
+                user_id=user_id,
                 page=page,
                 page_size=page_size,
                 sort_by=sort_by,
                 sort_order=sort_order
             )
 
-            # Convert to dict format
             items = [
                 {
                     "id": ex.id,
@@ -114,25 +97,15 @@ def list_exercises(
 
 
 @mcp.tool(name="get-exercise")
-def get_exercise(exercise_id: int) -> dict:
+def get_exercise(exercise_id: int, user_id: int = 1) -> dict:
     """Get a single exercise by ID.
 
     Args:
         exercise_id: The unique identifier of the exercise
+        user_id: User ID who owns the exercise (default: 1 = system user)
 
     Returns:
-        Dictionary with exercise data or error:
-        {
-            "status": 200,
-            "exercise": {
-                "id": 1,
-                "name": "Bench Press",
-                "sets": 4,
-                "reps": 8,
-                "weight": 80.0,
-                "workout_day": "A"
-            }
-        }
+        Dictionary with exercise data or error.
     """
     if exercise_id < 1:
         return {"status": 400, "error": "exercise_id must be >= 1"}
@@ -140,7 +113,7 @@ def get_exercise(exercise_id: int) -> dict:
     try:
         with Session(engine) as session:
             repo = ExerciseRepository(session)
-            exercise = repo.get_by_id(exercise_id)
+            exercise = repo.get_by_id(exercise_id, user_id)
 
             if not exercise:
                 return {"status": 404, "error": f"Exercise {exercise_id} not found"}
@@ -165,23 +138,19 @@ def get_exercise(exercise_id: int) -> dict:
 
 
 @mcp.tool(name="calculate-volume")
-def calculate_volume() -> dict:
-    """Calculate total workout volume (sets × reps × weight) across all exercises.
+def calculate_volume(user_id: int = 1) -> dict:
+    """Calculate total workout volume (sets x reps x weight) across all exercises.
+
+    Args:
+        user_id: User ID to calculate volume for (default: 1 = system user)
 
     Returns:
-        Dictionary with volume statistics:
-        {
-            "status": 200,
-            "total_volume": 12500.0,
-            "exercise_count": 8,
-            "weighted_exercises": 6,
-            "bodyweight_exercises": 2
-        }
+        Dictionary with volume statistics.
     """
     try:
         with Session(engine) as session:
             repo = ExerciseRepository(session)
-            exercises = repo.get_all()
+            exercises = repo.get_all(user_id)
 
             total_volume = 0.0
             weighted_count = 0

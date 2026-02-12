@@ -22,7 +22,7 @@ dependencies = [
     "arq>=0.25.0",
     "logfire>=0.41.0",
     "mcp[cli]>=1.1.0",
-    "passlib[bcrypt]>=1.7.4",
+    "google-auth>=2.29.0",
 ]
 
 [project.optional-dependencies]

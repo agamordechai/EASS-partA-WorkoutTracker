@@ -188,6 +188,12 @@ class AppSettings(BaseSettings):
         # Call parent init
         super().__init__(**data)
 
+    # Google OAuth
+    google_client_id: str = Field(
+        default="",
+        description="Google OAuth 2.0 Client ID for sign-in verification"
+    )
+
     # Application-level settings
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
