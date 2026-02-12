@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { chatWithCoach } from '../api/client';
 import type { ChatMessage } from '../types/aiCoach';
+import { ApiKeySettings } from './ApiKeySettings';
 
 interface AICoachChatProps {
   onClose: () => void;
@@ -20,7 +21,9 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [includeContext, setIncludeContext] = useState(true);
+  const [showKeySettings, setShowKeySettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasApiKey = () => !!localStorage.getItem('anthropic_api_key');
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -40,15 +43,25 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
     try {
       const response = await chatWithCoach(userMessage, includeContext);
       setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `Sorry, I encountered an error: ${errorMessage}. Please make sure the AI Coach service is running.`,
-        },
-      ]);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: 'An Anthropic API key is required to use the AI Coach. Please set your key in Settings.',
+          },
+        ]);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Sorry, I encountered an error: ${errorMessage}. Please make sure the AI Coach service is running.`,
+          },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -76,9 +89,18 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
             <h2>🤖 AI Coach</h2>
             <p>Your personal fitness assistant</p>
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={onClose}>
-            ✕
-          </button>
+          <div className="chat-header-actions">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowKeySettings(true)}
+              title="API Key Settings"
+            >
+              {hasApiKey() ? '🔑' : '⚠️ Set Key'}
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={onClose}>
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="chat-messages">
@@ -151,6 +173,9 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
             </button>
           </div>
         </div>
+        {showKeySettings && (
+          <ApiKeySettings onClose={() => setShowKeySettings(false)} />
+        )}
       </div>
     </div>
   );

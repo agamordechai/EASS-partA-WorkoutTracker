@@ -53,6 +53,16 @@ function attachAuthHeader(config: any) {
 client.interceptors.request.use(attachAuthHeader);
 aiCoachClient.interceptors.request.use(attachAuthHeader);
 
+// Attach user-provided Anthropic key for AI Coach requests
+aiCoachClient.interceptors.request.use((config) => {
+  const key = localStorage.getItem('anthropic_api_key');
+  if (key) {
+    config.headers = config.headers || {};
+    config.headers['X-Anthropic-Key'] = key;
+  }
+  return config;
+});
+
 // Response interceptor: attempt token refresh on 401
 client.interceptors.response.use(
   (response) => response,

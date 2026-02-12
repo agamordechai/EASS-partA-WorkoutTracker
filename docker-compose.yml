@@ -112,6 +112,9 @@ services:
       - AI_TEMPERATURE=0.7
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 
+      # JWT (shared with API for admin-check on per-user keys)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default-docker-secret-change-me}
+
       # Service URLs
       - WORKOUT_API_URL=http://api:8000
       - REDIS_URL=redis://redis:6379/0

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import logging
+
+import jwt
 import redis.asyncio as redis
 
 from services.ai_coach.src.config import get_settings
@@ -43,6 +45,51 @@ redis_client: redis.Redis | None = None
 def _get_auth_header(request: Request) -> str | None:
     """Extract the Authorization header from the incoming request."""
     return request.headers.get("Authorization")
+
+
+def _resolve_anthropic_key(request: Request) -> str:
+    """Resolve the Anthropic API key for this request.
+
+    Priority:
+      1. ``X-Anthropic-Key`` header (user-provided key)
+      2. Server ``ANTHROPIC_API_KEY`` env var if the caller is an admin
+      3. Raise 403
+
+    Args:
+        request: The incoming FastAPI request
+
+    Returns:
+        The resolved API key string
+
+    Raises:
+        HTTPException: 403 when no key can be resolved
+    """
+    # 1. User-provided key
+    user_key = request.headers.get("X-Anthropic-Key")
+    if user_key:
+        return user_key
+
+    # 2. Admin fallback to server key
+    server_key = settings.anthropic_api_key
+    if server_key:
+        auth = request.headers.get("Authorization", "")
+        token = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
+        if token:
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.jwt_secret_key,
+                    algorithms=["HS256"],
+                )
+                if payload.get("role") == "admin":
+                    return server_key
+            except jwt.PyJWTError:
+                logger.debug("JWT decode failed during admin check")
+
+    raise HTTPException(
+        status_code=403,
+        detail="Anthropic API key required. Please set your API key in Settings.",
+    )
 
 
 @asynccontextmanager
@@ -123,6 +170,7 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
     Send a message and receive personalized fitness advice.
     Optionally includes your current workout data for context.
     """
+    anthropic_key = _resolve_anthropic_key(request)
     auth_header = _get_auth_header(request)
     workout_context = None
 
@@ -134,7 +182,9 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
             logger.warning(f"Failed to fetch workout context: {e}")
 
     try:
-        response = await chat_with_coach(chat_request.message, workout_context)
+        response = await chat_with_coach(
+            chat_request.message, workout_context, api_key=anthropic_key
+        )
         return ChatResponse(
             response=response,
             context_used=workout_context is not None and len(workout_context.exercises) > 0
@@ -154,6 +204,7 @@ async def recommend_workout(request: Request, rec_request: RecommendationRequest
     Generates a personalized workout plan based on your current exercises,
     target muscle group, available equipment, and desired session duration.
     """
+    anthropic_key = _resolve_anthropic_key(request)
     auth_header = _get_auth_header(request)
 
     # Fetch current workout context
@@ -169,7 +220,8 @@ async def recommend_workout(request: Request, rec_request: RecommendationRequest
             workout_context=workout_context,
             focus_area=rec_request.focus_area,
             equipment=rec_request.equipment_available,
-            session_duration=rec_request.session_duration_minutes
+            session_duration=rec_request.session_duration_minutes,
+            api_key=anthropic_key,
         )
         return recommendation
     except Exception as e:
@@ -187,6 +239,7 @@ async def analyze_workout(request: Request) -> ProgressAnalysis:
     Provides insights on your training strengths, areas for improvement,
     and actionable recommendations based on your logged exercises.
     """
+    anthropic_key = _resolve_anthropic_key(request)
     auth_header = _get_auth_header(request)
 
     try:
@@ -206,7 +259,7 @@ async def analyze_workout(request: Request) -> ProgressAnalysis:
         )
 
     try:
-        analysis = await analyze_progress(workout_context)
+        analysis = await analyze_progress(workout_context, api_key=anthropic_key)
         return analysis
     except Exception as e:
         logger.error(f"Analysis error: {e}", exc_info=True)

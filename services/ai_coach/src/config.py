@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://redis:6379/0", alias="REDIS_URL")
     cache_ttl: int = Field(default=3600, alias="CACHE_TTL")
 
+    # JWT (shared with API for admin-check on per-user keys)
+    jwt_secret_key: str = Field(
+        default="dev-secret-key-change-in-production", alias="JWT_SECRET_KEY"
+    )
+
     # Service
     host: str = Field(default="0.0.0.0", alias="SERVICE_HOST")
     port: int = Field(default=8001, alias="SERVICE_PORT")

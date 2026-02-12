@@ -4,4 +4,5 @@ export { CreateExerciseForm } from './CreateExerciseForm';
 export { EditExerciseModal } from './EditExerciseModal';
 export { AICoachChat } from './AICoachChat';
 export { RecommendationPanel } from './RecommendationPanel';
+export { ApiKeySettings } from './ApiKeySettings';
 

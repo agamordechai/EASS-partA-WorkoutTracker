@@ -4,12 +4,12 @@ from dataclasses import dataclass
 
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from services.ai_coach.src.config import get_settings
 from services.ai_coach.src.models import (
     WorkoutContext,
     WorkoutRecommendation,
-    ExerciseRecommendation,
     ProgressAnalysis,
     MuscleGroup
 )
@@ -49,8 +49,27 @@ Guidelines:
 If workout context is provided, analyze it and tailor your responses accordingly.
 """
 
-# Initialize the coach agent
 settings = get_settings()
+
+
+def _build_model(api_key: str | None = None) -> AnthropicModel | None:
+    """Build an AnthropicModel with a per-request key, or None to use the agent default.
+
+    Args:
+        api_key: Anthropic API key to use for this request
+
+    Returns:
+        An AnthropicModel configured with the given key, or None
+    """
+    if api_key is None:
+        return None
+    # Strip the provider prefix (e.g. "anthropic:") for the raw model name
+    model_name = settings.ai_model.split(":", 1)[-1]
+    provider = AnthropicProvider(api_key=api_key)
+    return AnthropicModel(model_name, provider=provider)
+
+
+# Initialize the coach agent
 
 # Create the agent - using OpenAI by default
 coach_agent = Agent(
@@ -122,21 +141,24 @@ async def add_workout_context(ctx) -> str:
 
 async def chat_with_coach(
     message: str,
-    workout_context: WorkoutContext | None = None
+    workout_context: WorkoutContext | None = None,
+    api_key: str | None = None,
 ) -> str:
     """Chat with the AI coach.
 
     Args:
         message: User message
         workout_context: Optional workout context for personalized responses
+        api_key: Per-request Anthropic API key override
 
     Returns:
         Coach response
     """
     deps = CoachDependencies(workout_context=workout_context)
+    model = _build_model(api_key)
 
     try:
-        result = await coach_agent.run(message, deps=deps)
+        result = await coach_agent.run(message, deps=deps, model=model)
         return result.output
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -147,7 +169,8 @@ async def get_workout_recommendation(
     workout_context: WorkoutContext | None = None,
     focus_area: MuscleGroup | None = None,
     equipment: list[str] | None = None,
-    session_duration: int = 60
+    session_duration: int = 60,
+    api_key: str | None = None,
 ) -> WorkoutRecommendation:
     """Get a workout recommendation from the AI coach.
 
@@ -156,6 +179,7 @@ async def get_workout_recommendation(
         focus_area: Target muscle group
         equipment: Available equipment
         session_duration: Workout duration in minutes
+        api_key: Per-request Anthropic API key override
 
     Returns:
         Structured workout recommendation
@@ -186,6 +210,7 @@ If workout context is available, complement existing exercises rather than dupli
 
     try:
         # Use structured output for the recommendation
+        model = _build_model(api_key)
         recommendation_agent = Agent(
             model=settings.ai_model,
             output_type=WorkoutRecommendation,
@@ -193,21 +218,22 @@ If workout context is available, complement existing exercises rather than dupli
             deps_type=CoachDependencies
         )
 
-        result = await recommendation_agent.run(prompt, deps=deps)
+        result = await recommendation_agent.run(prompt, deps=deps, model=model)
         return result.output
     except Exception as e:
         logger.error(f"Recommendation error: {e}")
-        # Return a fallback recommendation
-        return _get_fallback_recommendation(focus_area, session_duration)
+        raise
 
 
 async def analyze_progress(
-    workout_context: WorkoutContext
+    workout_context: WorkoutContext,
+    api_key: str | None = None,
 ) -> ProgressAnalysis:
     """Analyze workout progress and provide insights.
 
     Args:
         workout_context: Current workout data
+        api_key: Per-request Anthropic API key override
 
     Returns:
         Progress analysis with recommendations
@@ -229,6 +255,7 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
 
     try:
         # Create analysis agent with the same system prompt decorator
+        model = _build_model(api_key)
         analysis_agent = Agent(
             model=settings.ai_model,
             output_type=ProgressAnalysis,
@@ -296,7 +323,7 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
 
             return ""
 
-        result = await analysis_agent.run(prompt, deps=deps)
+        result = await analysis_agent.run(prompt, deps=deps, model=model)
         return result.output
     except Exception as e:
         logger.error(f"Analysis error: {e}", exc_info=True)
@@ -305,108 +332,4 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
         raise
 
 
-def _get_fallback_recommendation(
-    focus_area: MuscleGroup | None,
-    duration: int
-) -> WorkoutRecommendation:
-    """Get a fallback recommendation when AI is unavailable.
-
-    Args:
-        focus_area: Target muscle group for the workout
-        duration: Workout duration in minutes
-
-    Returns:
-        A structured workout recommendation with exercises and tips
-    """
-
-    exercises_by_group = {
-        MuscleGroup.CHEST: [
-            ExerciseRecommendation(
-                name="Bench Press", sets=4, reps="8-10",
-                weight_suggestion="Start with bar only",
-                notes="Keep shoulders back and down",
-                muscle_group=MuscleGroup.CHEST
-            ),
-            ExerciseRecommendation(
-                name="Incline Dumbbell Press", sets=3, reps="10-12",
-                notes="30-45 degree incline",
-                muscle_group=MuscleGroup.CHEST
-            ),
-            ExerciseRecommendation(
-                name="Cable Flyes", sets=3, reps="12-15",
-                notes="Focus on the squeeze",
-                muscle_group=MuscleGroup.CHEST
-            ),
-        ],
-        MuscleGroup.BACK: [
-            ExerciseRecommendation(
-                name="Barbell Row", sets=4, reps="8-10",
-                notes="Keep back straight",
-                muscle_group=MuscleGroup.BACK
-            ),
-            ExerciseRecommendation(
-                name="Lat Pulldown", sets=3, reps="10-12",
-                notes="Pull to upper chest",
-                muscle_group=MuscleGroup.BACK
-            ),
-            ExerciseRecommendation(
-                name="Seated Cable Row", sets=3, reps="12-15",
-                notes="Squeeze shoulder blades",
-                muscle_group=MuscleGroup.BACK
-            ),
-        ],
-        MuscleGroup.LEGS: [
-            ExerciseRecommendation(
-                name="Squat", sets=4, reps="8-10",
-                weight_suggestion="Start with bodyweight",
-                notes="Keep knees tracking over toes",
-                muscle_group=MuscleGroup.LEGS
-            ),
-            ExerciseRecommendation(
-                name="Romanian Deadlift", sets=3, reps="10-12",
-                notes="Feel the hamstring stretch",
-                muscle_group=MuscleGroup.LEGS
-            ),
-            ExerciseRecommendation(
-                name="Leg Press", sets=3, reps="12-15",
-                notes="Don't lock knees at top",
-                muscle_group=MuscleGroup.LEGS
-            ),
-        ],
-    }
-
-    # Default full body workout
-    default_exercises = [
-        ExerciseRecommendation(
-            name="Squat", sets=3, reps="10",
-            muscle_group=MuscleGroup.LEGS
-        ),
-        ExerciseRecommendation(
-            name="Bench Press", sets=3, reps="10",
-            muscle_group=MuscleGroup.CHEST
-        ),
-        ExerciseRecommendation(
-            name="Barbell Row", sets=3, reps="10",
-            muscle_group=MuscleGroup.BACK
-        ),
-        ExerciseRecommendation(
-            name="Overhead Press", sets=3, reps="10",
-            muscle_group=MuscleGroup.SHOULDERS
-        ),
-    ]
-
-    exercises = exercises_by_group.get(focus_area, default_exercises) if focus_area else default_exercises
-
-    return WorkoutRecommendation(
-        title=f"{focus_area.value.title() if focus_area else 'Full Body'} Workout",
-        description="A balanced workout targeting major muscle groups.",
-        exercises=exercises,
-        estimated_duration_minutes=duration,
-        difficulty="Intermediate",
-        tips=[
-            "Warm up for 5-10 minutes before starting",
-            "Rest 60-90 seconds between sets",
-            "Focus on proper form over heavy weight"
-        ]
-    )
 

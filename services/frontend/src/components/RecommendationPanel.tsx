@@ -10,6 +10,7 @@ import type {
   MuscleGroup,
   RecommendationRequest
 } from '../types/aiCoach';
+import { ApiKeySettings } from './ApiKeySettings';
 
 interface RecommendationPanelProps {
   onClose: () => void;
@@ -41,6 +42,8 @@ export function RecommendationPanel({ onClose }: RecommendationPanelProps) {
   const [activeTab, setActiveTab] = useState<'recommend' | 'analyze'>('recommend');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showKeySettings, setShowKeySettings] = useState(false);
+  const hasApiKey = () => !!localStorage.getItem('anthropic_api_key');
 
   // Recommendation form state
   const [focusArea, setFocusArea] = useState<MuscleGroup | ''>('');
@@ -75,8 +78,12 @@ export function RecommendationPanel({ onClose }: RecommendationPanelProps) {
 
       const result = await getWorkoutRecommendation(request);
       setRecommendation(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get recommendation');
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setError('Anthropic API key required. Please set your key using the 🔑 button.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to get recommendation');
+      }
     } finally {
       setLoading(false);
     }
@@ -90,8 +97,12 @@ export function RecommendationPanel({ onClose }: RecommendationPanelProps) {
     try {
       const result = await getProgressAnalysis();
       setAnalysis(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get analysis');
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setError('Anthropic API key required. Please set your key using the 🔑 button.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to get analysis');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,9 +126,18 @@ export function RecommendationPanel({ onClose }: RecommendationPanelProps) {
               📊 Analyze Progress
             </button>
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={onClose}>
-            ✕
-          </button>
+          <div className="recommendation-header-actions">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowKeySettings(true)}
+              title="API Key Settings"
+            >
+              {hasApiKey() ? '🔑' : '⚠️ Set Key'}
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={onClose}>
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="recommendation-content">
@@ -316,6 +336,10 @@ export function RecommendationPanel({ onClose }: RecommendationPanelProps) {
             </>
           )}
         </div>
+
+        {showKeySettings && (
+          <ApiKeySettings onClose={() => setShowKeySettings(false)} />
+        )}
       </div>
     </div>
   );
