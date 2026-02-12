@@ -13,9 +13,10 @@ class UserTable(SQLModel, table=True):
 
     Attributes:
         id: Auto-incrementing primary key
-        google_id: Unique Google OAuth subject ID
-        email: User email from Google
-        name: User display name from Google
+        google_id: Unique Google OAuth subject ID (None for email/password users)
+        email: Unique user email
+        name: User display name
+        password_hash: Bcrypt hash of password (None for Google OAuth users)
         picture_url: User profile picture URL from Google
         role: User role (default 'user')
         disabled: Whether account is disabled
@@ -25,9 +26,10 @@ class UserTable(SQLModel, table=True):
     __tablename__ = "users"
 
     id: int | None = Field(default=None, primary_key=True)
-    google_id: str = Field(unique=True, index=True, max_length=255)
-    email: str = Field(max_length=255)
+    google_id: str | None = Field(default=None, unique=True, index=True, max_length=255)
+    email: str = Field(unique=True, index=True, max_length=255)
     name: str = Field(max_length=255)
+    password_hash: str | None = Field(default=None, max_length=255)
     picture_url: str | None = Field(default=None, max_length=1024)
     role: str = Field(default="user", max_length=20)
     disabled: bool = Field(default=False)

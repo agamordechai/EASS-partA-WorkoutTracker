@@ -2,7 +2,7 @@
 
 This module defines the REST API endpoints for managing workout exercises.
 """
-from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query
+from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.middleware.base import RequestResponseEndpoint
@@ -25,6 +25,8 @@ from services.api.src.auth import (
     Token,
     GoogleLoginRequest,
     RefreshRequest,
+    RegisterRequest,
+    EmailLoginRequest,
     UserResponse,
     verify_google_token,
     create_access_token,
@@ -32,6 +34,8 @@ from services.api.src.auth import (
     decode_token,
     get_current_user,
     require_admin,
+    hash_password,
+    verify_password,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from slowapi import Limiter
@@ -390,6 +394,24 @@ def delete_exercise_endpoint(
     return None
 
 
+@app.post('/exercises/seed', status_code=200, tags=["Exercises"])
+@limiter.limit("5/minute")
+def seed_exercises(
+    request: Request,
+    repository: RepositoryDep,
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+) -> dict:
+    """Seed default sample exercises for the current user.
+
+    Only seeds if the user has no exercises yet.
+
+    Returns:
+        Count of exercises seeded.
+    """
+    count = repository.seed_initial_data(current_user.id)
+    return {"seeded": count}
+
+
 # ============ Authentication Endpoints ============
 
 @app.post('/auth/google', response_model=Token, tags=["Authentication"])
@@ -421,8 +443,7 @@ def google_login(
     )
 
     if is_new:
-        count = exercise_repo.seed_initial_data(user.id)
-        logger.info(f"New user {user.email} created, seeded {count} exercises")
+        logger.info(f"New user {user.email} created via Google")
 
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role},
@@ -435,6 +456,106 @@ def google_login(
         token_type="bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         refresh_token=refresh_token
+    )
+
+
+@app.post('/auth/register', response_model=Token, status_code=201, tags=["Authentication"])
+@limiter.limit(lambda: ratelimit_settings.auth_limit)
+def register_email(
+    request: Request,
+    register_request: RegisterRequest,
+    user_repo: UserRepositoryDep,
+) -> Token:
+    """Register a new user with email and password.
+
+    Args:
+        register_request: Email, name, and password.
+
+    Returns:
+        Access and refresh tokens.
+
+    Raises:
+        HTTPException: 409 if email is already registered.
+    """
+    existing = user_repo.get_by_email(register_request.email)
+    if existing:
+        if existing.password_hash is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+        # Link password to existing Google-only account
+        existing.password_hash = hash_password(register_request.password)
+        user_repo.session.add(existing)
+        user_repo.session.commit()
+        user_repo.session.refresh(existing)
+        user = existing
+        logger.info(f"Linked email/password to existing Google account {user.email}")
+    else:
+        hashed = hash_password(register_request.password)
+        user = user_repo.create_email_user(
+            email=register_request.email,
+            name=register_request.name,
+            password_hash=hashed,
+        )
+        logger.info(f"New email user {user.email} registered")
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(user.id)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token,
+    )
+
+
+@app.post('/auth/login', response_model=Token, tags=["Authentication"])
+@limiter.limit(lambda: ratelimit_settings.auth_limit)
+def login_email(
+    request: Request,
+    login_request: EmailLoginRequest,
+    user_repo: UserRepositoryDep,
+) -> Token:
+    """Authenticate with email and password.
+
+    Args:
+        login_request: Email and password.
+
+    Returns:
+        Access and refresh tokens.
+
+    Raises:
+        HTTPException: 401 if credentials are invalid.
+    """
+    user = user_repo.get_by_email(login_request.email)
+    if user is None or user.password_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not verify_password(login_request.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(user.id)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token,
     )
 
 

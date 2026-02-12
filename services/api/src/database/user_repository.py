@@ -1,4 +1,5 @@
 """Repository for user CRUD operations."""
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from services.api.src.database.db_models import UserTable
@@ -90,6 +91,14 @@ class UserRepository:
             self.update_profile(existing, email=email, name=name, picture_url=picture_url)
             return existing, False
 
+        # Check if an email/password account already exists for this email
+        by_email = self.get_by_email(email)
+        if by_email:
+            # Link Google credentials to the existing account
+            by_email.google_id = google_id
+            self.update_profile(by_email, email=email, name=name, picture_url=picture_url)
+            return by_email, False
+
         new_user = self.create(
             google_id=google_id,
             email=email,
@@ -97,6 +106,46 @@ class UserRepository:
             picture_url=picture_url,
         )
         return new_user, True
+
+    def get_by_email(self, email: str) -> UserTable | None:
+        """Find a user by email address (case-insensitive).
+
+        Args:
+            email: User email address
+
+        Returns:
+            User if found, None otherwise.
+        """
+        statement = select(UserTable).where(
+            func.lower(UserTable.email) == email.lower()
+        )
+        return self.session.exec(statement).first()
+
+    def create_email_user(
+        self,
+        email: str,
+        name: str,
+        password_hash: str,
+    ) -> UserTable:
+        """Create a new user with email/password credentials.
+
+        Args:
+            email: User email address
+            name: User display name
+            password_hash: Bcrypt password hash
+
+        Returns:
+            The newly created user.
+        """
+        user = UserTable(
+            email=email.lower(),
+            name=name,
+            password_hash=password_hash,
+        )
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+        return user
 
     def update_profile(
         self,

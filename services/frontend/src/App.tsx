@@ -16,6 +16,7 @@ import {
   createExercise,
   updateExercise,
   deleteExercise,
+  seedExercises,
 } from './api/client';
 import type { Exercise, CreateExerciseRequest, UpdateExerciseRequest } from './types/exercise';
 import { useAuth } from './contexts/AuthContext';
@@ -192,8 +193,29 @@ function App() {
                 />
               </>
             ) : (
-              <div className="info-message">
-                No exercises yet. Add your first exercise below!
+              <div className="welcome-prompt">
+                <h2>Welcome to Workout Tracker!</h2>
+                <p>How would you like to get started?</p>
+                <div className="welcome-buttons">
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      await seedExercises();
+                      await fetchExercises();
+                    }}
+                  >
+                    Load sample exercises
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      const el = document.querySelector('.form-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    Start from scratch
+                  </button>
+                </div>
               </div>
             )}
 

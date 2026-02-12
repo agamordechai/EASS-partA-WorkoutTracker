@@ -10,11 +10,12 @@ from enum import Enum
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlmodel import Session
 import jwt
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
+import bcrypt
 
 from services.api.src.database.database import get_session
 from services.api.src.database.db_models import UserTable
@@ -27,6 +28,30 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Bearer token scheme
 bearer_scheme = HTTPBearer(auto_error=False)
+
+def hash_password(password: str) -> str:
+    """Hash a plaintext password with bcrypt.
+
+    Args:
+        password: Plaintext password
+
+    Returns:
+        Bcrypt hash string
+    """
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against a bcrypt hash.
+
+    Args:
+        plain_password: Plaintext password to check
+        hashed_password: Stored bcrypt hash
+
+    Returns:
+        True if the password matches
+    """
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
 class Role(str, Enum):
@@ -52,6 +77,19 @@ class GoogleLoginRequest(BaseModel):
 class RefreshRequest(BaseModel):
     """Token refresh request model."""
     refresh_token: str = Field(..., description="Refresh token")
+
+
+class RegisterRequest(BaseModel):
+    """Email/password registration request model."""
+    email: EmailStr = Field(..., description="User email address")
+    name: str = Field(..., min_length=1, max_length=255, description="Display name")
+    password: str = Field(..., min_length=8, max_length=128, description="Password (min 8 characters)")
+
+
+class EmailLoginRequest(BaseModel):
+    """Email/password login request model."""
+    email: EmailStr = Field(..., description="User email address")
+    password: str = Field(..., description="User password")
 
 
 class UserResponse(BaseModel):

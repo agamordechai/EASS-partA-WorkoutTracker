@@ -103,6 +103,20 @@ export async function googleLogin(idToken: string): Promise<AuthTokens> {
   return response.data;
 }
 
+export async function registerEmail(
+  email: string,
+  name: string,
+  password: string,
+): Promise<AuthTokens> {
+  const response = await client.post<AuthTokens>('/auth/register', { email, name, password });
+  return response.data;
+}
+
+export async function loginEmail(email: string, password: string): Promise<AuthTokens> {
+  const response = await client.post<AuthTokens>('/auth/login', { email, password });
+  return response.data;
+}
+
 export async function getCurrentUser(): Promise<User> {
   const response = await client.get<User>('/auth/me');
   return response.data;
@@ -175,6 +189,14 @@ export async function updateExercise(
  */
 export async function deleteExercise(exerciseId: number): Promise<void> {
   await client.delete(`/exercises/${exerciseId}`);
+}
+
+/**
+ * Seed default sample exercises for the current user.
+ */
+export async function seedExercises(): Promise<{ seeded: number }> {
+  const response = await client.post<{ seeded: number }>('/exercises/seed');
+  return response.data;
 }
 
 // ============ AI Coach API ============

@@ -3,7 +3,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { googleLogin, getCurrentUser } from '../api/client';
+import { googleLogin, loginEmail, registerEmail, getCurrentUser } from '../api/client';
 import type { User } from '../types/auth';
 
 interface AuthContextType {
@@ -11,6 +11,8 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (googleIdToken: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -43,8 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, [logout]);
 
-  const login = useCallback(async (googleIdToken: string) => {
-    const tokens = await googleLogin(googleIdToken);
+  const storeTokensAndLoadUser = useCallback(async (tokens: { access_token: string; refresh_token: string | null }) => {
     localStorage.setItem('access_token', tokens.access_token);
     if (tokens.refresh_token) {
       localStorage.setItem('refresh_token', tokens.refresh_token);
@@ -53,6 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(currentUser);
   }, []);
 
+  const login = useCallback(async (googleIdToken: string) => {
+    const tokens = await googleLogin(googleIdToken);
+    await storeTokensAndLoadUser(tokens);
+  }, [storeTokensAndLoadUser]);
+
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    const tokens = await loginEmail(email, password);
+    await storeTokensAndLoadUser(tokens);
+  }, [storeTokensAndLoadUser]);
+
+  const register = useCallback(async (email: string, name: string, password: string) => {
+    const tokens = await registerEmail(email, name, password);
+    await storeTokensAndLoadUser(tokens);
+  }, [storeTokensAndLoadUser]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -60,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         isAuthenticated: user !== null,
         login,
+        loginWithEmail,
+        register,
         logout,
       }}
     >
