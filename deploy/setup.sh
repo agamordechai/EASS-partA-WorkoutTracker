@@ -70,21 +70,33 @@ if [[ "${JWT_SECRET_KEY:-}" == "<generate-a-strong-secret>" || -z "${JWT_SECRET_
 fi
 
 # --------------------------------------------------
-# 3. Open port 80 (Oracle Cloud iptables)
+# 3. Check SSL certificates
+# --------------------------------------------------
+if [ ! -f "$PROJECT_DIR/nginx/certs/cert.pem" ] || [ ! -f "$PROJECT_DIR/nginx/certs/key.pem" ]; then
+    echo ">>> WARNING: SSL certificates not found in nginx/certs/"
+    echo ">>>   Place your Cloudflare Origin Certificate files:"
+    echo ">>>     nginx/certs/cert.pem  (certificate)"
+    echo ">>>     nginx/certs/key.pem   (private key)"
+    echo ">>>   See: Cloudflare Dashboard → SSL/TLS → Origin Server → Create Certificate"
+    exit 1
+fi
+
+# --------------------------------------------------
+# 4. Open ports 80 & 443 (Oracle Cloud iptables)
 # --------------------------------------------------
 if [ -f "$SCRIPT_DIR/iptables.sh" ]; then
-    echo ">>> Opening port 80 (Oracle Cloud iptables)..."
+    echo ">>> Opening ports 80 & 443 (Oracle Cloud iptables)..."
     sudo bash "$SCRIPT_DIR/iptables.sh"
 fi
 
 # --------------------------------------------------
-# 4. Build and start services
+# 5. Build and start services
 # --------------------------------------------------
 echo ">>> Building and starting services..."
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 # --------------------------------------------------
-# 5. Wait for health checks
+# 6. Wait for health checks
 # --------------------------------------------------
 echo ">>> Waiting for services to become healthy..."
 ATTEMPTS=0
@@ -102,15 +114,15 @@ until docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --forma
 done
 
 # --------------------------------------------------
-# 6. Verify
+# 7. Verify
 # --------------------------------------------------
 echo ""
 echo "=== Deployment Summary ==="
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 echo ""
 
-PUBLIC_IP="${PUBLIC_IP:-<your-ip>}"
-echo ">>> Health check: curl http://$PUBLIC_IP/api/health"
-echo ">>> Frontend:     http://$PUBLIC_IP"
+DOMAIN_NAME="${DOMAIN_NAME:-<your-domain>}"
+echo ">>> Health check: curl https://$DOMAIN_NAME/api/health"
+echo ">>> Frontend:     https://$DOMAIN_NAME"
 echo ""
 echo "=== Done! ==="

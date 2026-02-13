@@ -158,7 +158,7 @@ Now test Google Sign-In on `http://<YOUR-PUBLIC-IP>`.
 | `deploy/setup.sh` | VM setup automation |
 | `deploy/iptables.sh` | Open port 80 (Oracle-specific, not needed for AWS) |
 
-## Architecture
+## Architecture (HTTP-only, before Step 10)
 
 ```
 Internet → :80 (frontend nginx container)
@@ -210,9 +210,143 @@ docker stats --no-stream
 4. Select **Zero spend budget** (alerts you if anything is charged)
 5. Enter your email → **Create budget**
 
-## Future: Adding HTTPS + Domain
+## Step 10: Add HTTPS with Cloudflare + Origin Certificate
 
-When ready, use a free domain + Let's Encrypt:
-- DuckDNS (free subdomain) or Freenom
-- Add certbot container for SSL certificates
-- Update nginx config for HTTPS
+### 10a: Get a Domain
+
+Buy a domain from any registrar (Cloudflare Registrar, Namecheap, Google Domains, etc.).
+
+### 10b: Add Your Domain to Cloudflare
+
+1. Go to https://dash.cloudflare.com and sign up / log in
+2. Click **Add a site** (top bar)
+3. Enter your domain name and click **Continue**
+4. Select the **Free** plan → click **Continue**
+5. Cloudflare will scan existing DNS records — click **Continue**
+6. Cloudflare shows you **two nameservers** (e.g. `ada.ns.cloudflare.com`, `bob.ns.cloudflare.com`)
+7. Go to your domain registrar and **replace the nameservers** with the two Cloudflare ones
+   - If you bought the domain on Cloudflare Registrar, skip this — it's automatic
+8. Back in Cloudflare, click **Done, check nameservers**
+9. Wait for the email confirming your domain is active (can take up to 24 hours, usually minutes)
+
+### 10c: Create DNS Records Pointing to Your EC2
+
+1. In Cloudflare dashboard, click your domain → **DNS** → **Records**
+2. Click **Add record**:
+   - **Type:** `A`
+   - **Name:** `@` (this means your root domain, e.g. `yourdomain.com`)
+   - **IPv4 address:** your EC2 public IP (from Step 3)
+   - **Proxy status:** toggle to **Proxied** (orange cloud icon)
+   - Click **Save**
+3. Click **Add record** again:
+   - **Type:** `A`
+   - **Name:** `www`
+   - **IPv4 address:** same EC2 public IP
+   - **Proxy status:** **Proxied** (orange cloud)
+   - Click **Save**
+
+### 10d: Set SSL/TLS Mode to Full (Strict)
+
+1. In Cloudflare dashboard, click your domain → **SSL/TLS** (left sidebar)
+2. Under **Overview**, find the encryption mode selector
+3. Click **Full (Strict)**
+   - This tells Cloudflare to encrypt traffic all the way to your server and verify the Origin Certificate
+
+### 10e: Generate a Cloudflare Origin Certificate
+
+1. In Cloudflare dashboard → **SSL/TLS** → **Origin Server**
+2. Click **Create Certificate**
+3. In the dialog:
+   - **Private key type:** RSA (default is fine)
+   - **Hostnames:** should already show `yourdomain.com` and `*.yourdomain.com` — leave as-is
+   - **Certificate validity:** 15 years (default)
+4. Click **Create**
+5. You'll see two text boxes:
+   - **Origin Certificate** — copy the entire block (including `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`)
+   - **Private Key** — copy the entire block (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`)
+6. On your **local machine**, save these to files:
+   ```bash
+   # Paste the Origin Certificate
+   nano nginx/certs/cert.pem
+   # (paste, Ctrl+O, Enter, Ctrl+X)
+
+   # Paste the Private Key
+   nano nginx/certs/key.pem
+   # (paste, Ctrl+O, Enter, Ctrl+X)
+   ```
+7. **IMPORTANT:** Click **OK** in Cloudflare — you cannot see the private key again after closing this dialog
+
+### 10f: Copy Certs to the Server
+
+```bash
+scp -i ~/.ssh/aws-vm nginx/certs/cert.pem nginx/certs/key.pem ubuntu@<YOUR-EC2-IP>:~/eass_a_workouttracker/nginx/certs/
+```
+
+### 10g: Update `.env` on the Server
+
+SSH into your EC2 and edit `.env`:
+```bash
+ssh -i ~/.ssh/aws-vm ubuntu@<YOUR-EC2-IP>
+cd eass_a_workouttracker
+nano .env
+```
+
+Add/update:
+```
+DOMAIN_NAME=yourdomain.com
+```
+
+Save and exit.
+
+### 10h: Open Port 443 in AWS Security Group
+
+1. Go to https://console.aws.amazon.com → **EC2** → **Instances**
+2. Click your instance → **Security** tab → click the **Security group** link
+3. Click **Edit inbound rules**
+4. Click **Add rule**:
+   - **Type:** HTTPS
+   - **Source:** `0.0.0.0/0`
+5. Click **Save rules**
+
+### 10i: Redeploy
+
+On the server:
+```bash
+cd ~/eass_a_workouttracker
+git pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+### 10j: Update Google OAuth Redirect URIs
+
+1. Go to https://console.cloud.google.com → **APIs & Services** → **Credentials**
+2. Click your **OAuth 2.0 Client ID**
+3. Under **Authorized JavaScript origins**, add:
+   - `https://yourdomain.com`
+4. Under **Authorized redirect URIs**, add:
+   - `https://yourdomain.com`
+5. Click **Save**
+
+### 10k: Verify Everything Works
+
+```bash
+# Should redirect to https
+curl -I http://yourdomain.com
+
+# Should return the frontend HTML with valid SSL
+curl https://yourdomain.com
+
+# API health check
+curl https://yourdomain.com/api/health
+```
+
+Open `https://yourdomain.com` in your browser — you should see a valid SSL lock icon and Google Sign-In should work.
+
+## Architecture (with HTTPS)
+
+```
+Client → Cloudflare (edge SSL) → EC2:443 → nginx-proxy (Origin Cert)
+                                                → frontend:80 (static React + reverse proxy)
+                                                    → /api/       → api:8000
+                                                    → /ai-coach/  → ai-coach:8001
+```

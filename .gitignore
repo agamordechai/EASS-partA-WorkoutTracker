@@ -45,3 +45,6 @@ data/
 .DS_Store
 Thumbs.db
 docs/sessions
+
+# SSL certificates (Cloudflare Origin Certs)
+nginx/certs/*.pem

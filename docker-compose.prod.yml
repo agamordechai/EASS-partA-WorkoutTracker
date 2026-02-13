@@ -20,7 +20,7 @@ services:
     environment:
       - APP_ENVIRONMENT=production
       - APP_LOG_LEVEL=WARNING
-      - APP_CORS_ORIGINS=http://${PUBLIC_IP:-localhost}
+      - APP_CORS_ORIGINS=https://${DOMAIN_NAME:-localhost}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-workout}:${POSTGRES_PASSWORD:-workout123}@db:5432/${POSTGRES_DB:-workout_tracker}
       - API_HOST=0.0.0.0
       - API_PORT=8000
@@ -58,5 +58,20 @@ services:
     ports: !override []
 
   frontend:
+    ports: !override []
+
+  nginx-proxy:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: workout-tracker-nginx-proxy
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+    restart: unless-stopped
+    networks:
+      - workout-net
