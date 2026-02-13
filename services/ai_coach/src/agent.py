@@ -73,9 +73,8 @@ def _build_model(api_key: str | None = None) -> AnthropicModel | None:
 
 # Create the agent - using OpenAI by default
 coach_agent = Agent(
-    model=settings.ai_model,
     system_prompt=COACH_SYSTEM_PROMPT,
-    deps_type=CoachDependencies
+    deps_type=CoachDependencies,
 )
 
 
@@ -212,10 +211,9 @@ If workout context is available, complement existing exercises rather than dupli
         # Use structured output for the recommendation
         model = _build_model(api_key)
         recommendation_agent = Agent(
-            model=settings.ai_model,
             output_type=WorkoutRecommendation,
             system_prompt=COACH_SYSTEM_PROMPT,
-            deps_type=CoachDependencies
+            deps_type=CoachDependencies,
         )
 
         result = await recommendation_agent.run(prompt, deps=deps, model=model)
@@ -257,10 +255,9 @@ Be encouraging but honest. Focus on practical improvements specific to this pers
         # Create analysis agent with the same system prompt decorator
         model = _build_model(api_key)
         analysis_agent = Agent(
-            model=settings.ai_model,
             output_type=ProgressAnalysis,
             system_prompt=COACH_SYSTEM_PROMPT,
-            deps_type=CoachDependencies
+            deps_type=CoachDependencies,
         )
 
         # Register the workout context system prompt
