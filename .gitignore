@@ -36,7 +36,6 @@ data/
 .env.*.local
 .env.development
 .env.production
-.credentials
 
 # UV
 .uv/
