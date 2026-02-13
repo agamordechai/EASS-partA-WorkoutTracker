@@ -36,10 +36,10 @@ data/
 .env.*.local
 .env.development
 .env.production
+.credentials
 
 # UV
 .uv/
-uv.lock
 
 # OS
 .DS_Store
