@@ -1,0 +1,62 @@
+# Production overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# - Removes exposed ports for internal services (api, ai-coach, worker, redis)
+# - Maps frontend to port 80
+# - Reads secrets from .env file
+
+services:
+  db:
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-workout}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-workout123}
+      - POSTGRES_DB=${POSTGRES_DB:-workout_tracker}
+
+  redis:
+    ports: !override []
+
+  api:
+    ports: !override []
+    environment:
+      - APP_ENVIRONMENT=production
+      - APP_LOG_LEVEL=WARNING
+      - APP_CORS_ORIGINS=http://${PUBLIC_IP:-localhost}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-workout}:${POSTGRES_PASSWORD:-workout123}@db:5432/${POSTGRES_DB:-workout_tracker}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=4
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - PYTHONUNBUFFERED=1
+      - RATELIMIT_ENABLED=true
+      - RATELIMIT_REDIS_URL=redis://redis:6379/2
+      - RATELIMIT_PUBLIC_LIMIT=100/minute
+      - RATELIMIT_AUTH_LIMIT=10/minute
+      - RATELIMIT_READ_LIMIT_ANONYMOUS=60/minute
+      - RATELIMIT_READ_LIMIT_USER=120/minute
+      - RATELIMIT_READ_LIMIT_ADMIN=300/minute
+      - RATELIMIT_WRITE_LIMIT_ANONYMOUS=30/minute
+      - RATELIMIT_WRITE_LIMIT_USER=60/minute
+      - RATELIMIT_WRITE_LIMIT_ADMIN=150/minute
+      - RATELIMIT_ADMIN_LIMIT=100/minute
+
+  ai-coach:
+    ports: !override []
+    environment:
+      - AI_MODEL=anthropic:claude-3-5-haiku-latest
+      - AI_TEMPERATURE=0.7
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - WORKOUT_API_URL=http://api:8000
+      - REDIS_URL=redis://redis:6379/0
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=8001
+      - LOG_LEVEL=WARNING
+      - PYTHONUNBUFFERED=1
+
+  worker:
+    ports: !override []
+
+  frontend:
+    ports:
+      - "80:80"
