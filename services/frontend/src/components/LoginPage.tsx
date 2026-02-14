@@ -1,7 +1,3 @@
-/**
- * Login page with email/password form and Google Sign-In button.
- */
-
 import { useState } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,9 +21,7 @@ export default function LoginPage() {
       setError(null);
       await login(credentialResponse.credential);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Login failed. Please try again.'
-      );
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     }
   };
 
@@ -57,83 +51,77 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h1>Workout Tracker</h1>
-        <p>{isRegister ? 'Create an account' : 'Sign in to track your workouts'}</p>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Subtle background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
-        <form className="email-form" onSubmit={handleEmailSubmit}>
-          <div className="form-field">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
+      <div className="w-full max-w-sm relative">
+        <div className="card space-y-6 shadow-xl shadow-black/20">
+          {/* Logo + title */}
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-primary to-[#6648d9] mx-auto mb-5 flex items-center justify-center shadow-lg shadow-primary/25">
+              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight mt-1">Workout Tracker</h1>
+            <p className="text-text-muted text-sm mt-1.5">
+              {isRegister ? 'Create an account' : 'Sign in to track your workouts'}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form className="space-y-3" onSubmit={handleEmailSubmit}>
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className="input" />
+            {isRegister && (
+              <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" className="input" />
+            )}
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete={isRegister ? 'new-password' : 'current-password'} className="input" />
+            <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
+              {submitting
+                ? (isRegister ? 'Creating account...' : 'Signing in...')
+                : (isRegister ? 'Create account' : 'Sign in')}
+            </button>
+          </form>
+
+          {/* Toggle */}
+          <p className="text-center text-sm text-text-muted">
+            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              onClick={() => { setIsRegister(!isRegister); setError(null); }}
+              className="text-primary hover:underline font-medium"
+            >
+              {isRegister ? 'Sign in' : 'Register'}
+            </button>
+          </p>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-text-muted text-xs uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Google */}
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="filled_blue"
+              size="large"
+              shape="rectangular"
+              text="signin_with"
+              width="300"
             />
           </div>
-          {isRegister && (
-            <div className="form-field">
-              <input
-                type="text"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
+
+          {/* Error */}
+          {error && (
+            <div className="bg-danger/10 border-[1.5px] border-danger/20 text-danger text-sm rounded-xl px-4 py-3">
+              {error}
             </div>
           )}
-          <div className="form-field">
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary full-width" disabled={submitting}>
-            {submitting
-              ? (isRegister ? 'Creating account...' : 'Signing in...')
-              : (isRegister ? 'Create account' : 'Sign in')}
-          </button>
-        </form>
-
-        <p className="auth-toggle">
-          {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              setIsRegister(!isRegister);
-              setError(null);
-            }}
-          >
-            {isRegister ? 'Sign in' : 'Register'}
-          </a>
-        </p>
-
-        <div className="auth-divider">
-          <span>or</span>
         </div>
-
-        <div className="google-btn-wrapper">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            theme="filled_blue"
-            size="large"
-            shape="rectangular"
-            text="signin_with"
-            width="300"
-          />
-        </div>
-
-        {error && <div className="login-error">{error}</div>}
       </div>
     </div>
   );

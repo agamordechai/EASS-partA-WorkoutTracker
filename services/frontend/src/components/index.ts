@@ -5,4 +5,7 @@ export { EditExerciseModal } from './EditExerciseModal';
 export { AICoachChat } from './AICoachChat';
 export { RecommendationPanel } from './RecommendationPanel';
 export { ApiKeySettings } from './ApiKeySettings';
-
+export { Layout } from './Layout';
+export { Sidebar } from './Sidebar';
+export { BottomTabs } from './BottomTabs';
+export { LoadingSpinner } from './LoadingSpinner';

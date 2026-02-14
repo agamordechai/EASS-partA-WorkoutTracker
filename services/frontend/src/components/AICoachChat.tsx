@@ -1,17 +1,8 @@
-/**
- * AI Coach Chat Interface Component
- */
-
 import { useState, useRef, useEffect } from 'react';
 import { chatWithCoach } from '../api/client';
 import type { ChatMessage } from '../types/aiCoach';
-import { ApiKeySettings } from './ApiKeySettings';
 
-interface AICoachChatProps {
-  onClose: () => void;
-}
-
-export function AICoachChat({ onClose }: AICoachChatProps) {
+export function AICoachChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -21,11 +12,8 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [includeContext, setIncludeContext] = useState(true);
-  const [showKeySettings, setShowKeySettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasApiKey = () => !!localStorage.getItem('anthropic_api_key');
 
-  // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -35,8 +23,6 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
 
     const userMessage = input.trim();
     setInput('');
-
-    // Add user message
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
@@ -47,19 +33,13 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
       if (err?.response?.status === 403) {
         setMessages(prev => [
           ...prev,
-          {
-            role: 'assistant',
-            content: 'An Anthropic API key is required to use the AI Coach. Please set your key in Settings.',
-          },
+          { role: 'assistant', content: 'An Anthropic API key is required to use the AI Coach. Please set your key in Settings.' },
         ]);
       } else {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setMessages(prev => [
           ...prev,
-          {
-            role: 'assistant',
-            content: `Sorry, I encountered an error: ${errorMessage}. Please make sure the AI Coach service is running.`,
-          },
+          { role: 'assistant', content: `Sorry, I encountered an error: ${errorMessage}. Please make sure the AI Coach service is running.` },
         ]);
       }
     } finally {
@@ -82,102 +62,86 @@ export function AICoachChat({ onClose }: AICoachChatProps) {
   ];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="chat-modal" onClick={e => e.stopPropagation()}>
-        <div className="chat-header">
-          <div className="chat-header-content">
-            <h2>🤖 AI Coach</h2>
-            <p>Your personal fitness assistant</p>
-          </div>
-          <div className="chat-header-actions">
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowKeySettings(true)}
-              title="API Key Settings"
-            >
-              {hasApiKey() ? '🔑' : '⚠️ Set Key'}
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={onClose}>
-              ✕
-            </button>
-          </div>
-        </div>
-
-        <div className="chat-messages">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`chat-message ${msg.role}`}>
-              <div className="message-avatar">
-                {msg.role === 'assistant' ? '🤖' : '👤'}
-              </div>
-              <div className="message-content">
-                <div className="message-text">{msg.content}</div>
-              </div>
+    <div className="card flex flex-col" style={{ height: 'calc(100vh - 16rem)' }}>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0
+              ${msg.role === 'assistant' ? 'bg-primary-muted text-primary' : 'bg-surface-light text-text-secondary'}`}>
+              {msg.role === 'assistant' ? 'AI' : 'You'}
             </div>
-          ))}
-          {loading && (
-            <div className="chat-message assistant">
-              <div className="message-avatar">🤖</div>
-              <div className="message-content">
-                <div className="message-text typing">
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
-                </div>
-              </div>
+            <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm leading-relaxed
+              ${msg.role === 'assistant'
+                ? 'bg-surface-light text-text-primary'
+                : 'bg-primary text-white'}`}>
+              <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {messages.length === 1 && (
-          <div className="suggested-questions">
-            <p>Try asking:</p>
-            <div className="suggestions-grid">
-              {suggestedQuestions.map((q, idx) => (
-                <button
-                  key={idx}
-                  className="suggestion-btn"
-                  onClick={() => setInput(q)}
-                >
-                  {q}
-                </button>
-              ))}
+          </div>
+        ))}
+        {loading && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm bg-primary-muted text-primary shrink-0">AI</div>
+            <div className="bg-surface-light rounded-xl px-4 py-3">
+              <div className="flex gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-text-muted animate-typing" style={{ animationDelay: '0s' }} />
+                <span className="w-2 h-2 rounded-full bg-text-muted animate-typing" style={{ animationDelay: '0.2s' }} />
+                <span className="w-2 h-2 rounded-full bg-text-muted animate-typing" style={{ animationDelay: '0.4s' }} />
+              </div>
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        <div className="chat-input-container">
-          <label className="context-toggle">
-            <input
-              type="checkbox"
-              checked={includeContext}
-              onChange={e => setIncludeContext(e.target.checked)}
-            />
-            <span>Include my workout data</span>
-          </label>
-          <div className="chat-input-row">
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask your AI coach anything..."
-              disabled={loading}
-              rows={2}
-            />
-            <button
-              className="btn btn-primary send-btn"
-              onClick={handleSend}
-              disabled={!input.trim() || loading}
-            >
-              {loading ? '...' : 'Send'}
-            </button>
+      {/* Suggested questions */}
+      {messages.length === 1 && (
+        <div className="mb-4">
+          <p className="text-xs text-text-muted mb-2">Try asking:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {suggestedQuestions.map((q, idx) => (
+              <button
+                key={idx}
+                className="text-left text-xs px-3 py-2 rounded-lg bg-surface-light text-text-secondary hover:bg-border hover:text-text-primary transition-colors"
+                onClick={() => setInput(q)}
+              >
+                {q}
+              </button>
+            ))}
           </div>
         </div>
-        {showKeySettings && (
-          <ApiKeySettings onClose={() => setShowKeySettings(false)} />
-        )}
+      )}
+
+      {/* Input */}
+      <div className="border-t border-border pt-3 space-y-2">
+        <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeContext}
+            onChange={e => setIncludeContext(e.target.checked)}
+            className="rounded border-border"
+          />
+          Include my workout data
+        </label>
+        <div className="flex gap-2">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Ask your AI coach anything..."
+            disabled={loading}
+            rows={2}
+            className="input flex-1 resize-none"
+          />
+          <button
+            className="btn btn-primary self-end"
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+          >
+            {loading ? '...' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-

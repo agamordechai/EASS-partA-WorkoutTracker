@@ -1,7 +1,3 @@
-/**
- * Modal component for editing an existing exercise.
- */
-
 import { useState, FormEvent, useEffect } from 'react';
 import type { Exercise, UpdateExerciseRequest } from '../types/exercise';
 
@@ -20,7 +16,6 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset form when exercise changes
   useEffect(() => {
     setName(exercise.name);
     setSets(exercise.sets);
@@ -39,7 +34,6 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
       return;
     }
 
-    // Parse weight
     let weightValue: number | null = null;
     if (weight.trim()) {
       const parsed = parseFloat(weight);
@@ -59,7 +53,7 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
         weight: weightValue,
         workout_day: workoutDay,
       });
-      onCancel(); // Close modal on success
+      onCancel();
     } catch (err) {
       setError(`Failed to update exercise: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -68,75 +62,51 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
   };
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Update Exercise</h2>
-        <p className="modal-info">
-          Updating: <strong>{exercise.name}</strong> (ID: {exercise.id})
-        </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={onCancel}>
+      <div className="card w-full max-w-lg animate-fadeIn shadow-2xl shadow-black/40" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">Update Exercise</h2>
+            <p className="text-text-secondary text-xs mt-0.5">
+              Updating: <span className="font-medium text-text-primary">{exercise.name}</span> (ID: {exercise.id})
+            </p>
+          </div>
+          <button onClick={onCancel} className="text-text-muted hover:text-text-primary transition-colors p-1">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="bg-danger/10 border-[1.5px] border-danger/20 text-danger text-sm rounded-xl px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="edit-name">Exercise Name *</label>
-            <input
-              id="edit-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isSubmitting}
-            />
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label htmlFor="edit-name" className="block text-xs font-medium text-text-secondary mb-1">Exercise Name *</label>
+            <input id="edit-name" type="text" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting} className="input" />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="edit-sets">Sets *</label>
-              <input
-                id="edit-sets"
-                type="number"
-                min={1}
-                max={20}
-                value={sets}
-                onChange={(e) => setSets(parseInt(e.target.value) || 1)}
-                disabled={isSubmitting}
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label htmlFor="edit-sets" className="block text-xs font-medium text-text-secondary mb-1">Sets *</label>
+              <input id="edit-sets" type="number" min={1} max={20} value={sets} onChange={(e) => setSets(parseInt(e.target.value) || 1)} disabled={isSubmitting} className="input" />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="edit-reps">Reps *</label>
-              <input
-                id="edit-reps"
-                type="number"
-                min={1}
-                max={100}
-                value={reps}
-                onChange={(e) => setReps(parseInt(e.target.value) || 1)}
-                disabled={isSubmitting}
-              />
+            <div>
+              <label htmlFor="edit-reps" className="block text-xs font-medium text-text-secondary mb-1">Reps *</label>
+              <input id="edit-reps" type="number" min={1} max={100} value={reps} onChange={(e) => setReps(parseInt(e.target.value) || 1)} disabled={isSubmitting} className="input" />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="edit-weight">Weight (kg)</label>
-              <input
-                id="edit-weight"
-                type="text"
-                placeholder="Leave empty for bodyweight"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                disabled={isSubmitting}
-              />
+            <div>
+              <label htmlFor="edit-weight" className="block text-xs font-medium text-text-secondary mb-1">Weight (kg)</label>
+              <input id="edit-weight" type="text" placeholder="Bodyweight" value={weight} onChange={(e) => setWeight(e.target.value)} disabled={isSubmitting} className="input" />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="edit-workout-day">Workout Day *</label>
-              <select
-                id="edit-workout-day"
-                value={workoutDay}
-                onChange={(e) => setWorkoutDay(e.target.value)}
-                disabled={isSubmitting}
-              >
-                <option value="None">Daily (Every Day)</option>
+            <div>
+              <label htmlFor="edit-workout-day" className="block text-xs font-medium text-text-secondary mb-1">Day *</label>
+              <select id="edit-workout-day" value={workoutDay} onChange={(e) => setWorkoutDay(e.target.value)} disabled={isSubmitting} className="input">
+                <option value="None">Daily</option>
                 <option value="A">Day A</option>
                 <option value="B">Day B</option>
                 <option value="C">Day C</option>
@@ -148,16 +118,11 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
             </div>
           </div>
 
-          <div className="modal-buttons">
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          <div className="flex gap-3 pt-2">
+            <button type="submit" className="btn btn-primary flex-1" disabled={isSubmitting}>
               {isSubmitting ? 'Updating...' : 'Update Exercise'}
             </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
+            <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isSubmitting}>
               Cancel
             </button>
           </div>
@@ -166,4 +131,3 @@ export function EditExerciseModal({ exercise, onSubmit, onCancel }: EditExercise
     </div>
   );
 }
-
